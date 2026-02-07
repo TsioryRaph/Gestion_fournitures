@@ -1,0 +1,159 @@
+{% extends 'fournitures/base.html' %}
+
+{% block title %}Tableau de bord{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-boxes"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ total_fournitures }}</h3>
+                <p>Fournitures totales</p>
+            </div>
+        </div>
+        
+        <div class="stat-card alert">
+            <div class="stat-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ fournitures_alerte }}</h3>
+                <p>En alerte de stock</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ commandes_attente.count }}</h3>
+                <p>Commandes en attente</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-exchange-alt"></i>
+            </div>
+            <div class="stat-info">
+                <h3>{{ mouvements_recents.count }}</h3>
+                <p>Mouvements (7j)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <h2><i class="fas fa-bolt"></i> Actions rapides</h2>
+        <div class="actions-grid">
+            <a href="{% url 'mouvement' %}" class="action-btn">
+                <i class="fas fa-plus-circle"></i>
+                <span>Nouvelle entrée</span>
+            </a>
+            <a href="{% url 'mouvement' %}" class="action-btn">
+                <i class="fas fa-minus-circle"></i>
+                <span>Nouvelle sortie</span>
+            </a>
+            <a href="{% url 'ajouter_fourniture' %}" class="action-btn">
+                <i class="fas fa-box"></i>
+                <span>Ajouter produit</span>
+            </a>
+            <a href="{% url 'commande' %}" class="action-btn">
+                <i class="fas fa-file-invoice"></i>
+                <span>Nouvelle commande</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Fournitures en alerte -->
+    <div class="section">
+        <h2><i class="fas fa-exclamation-triangle"></i> Fournitures en alerte</h2>
+        {% if produits_alerte %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Référence</th>
+                        <th>Désignation</th>
+                        <th>Type</th>
+                        <th>Stock</th>
+                        <th>Seuil</th>
+                        <th>À commander</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for produit in produits_alerte %}
+                    <tr class="alert-row">
+                        <td>{{ produit.reference }}</td>
+                        <td>{{ produit.designation }}</td>
+                        <td>{{ produit.type.nom }}</td>
+                        <td>
+                            <span class="badge badge-danger">{{ produit.stock }} {{ produit.unite }}</span>
+                        </td>
+                        <td>{{ produit.seuil_alerte }}</td>
+                        <td>{{ produit.quantite_a_commander }}</td>
+                        <td>
+                            <a href="{% url 'commande' %}" class="btn btn-sm btn-warning">
+                                <i class="fas fa-shopping-cart"></i> Commander
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i> Aucune fourniture en alerte de stock.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Mouvements récents -->
+    <div class="section">
+        <h2><i class="fas fa-history"></i> Derniers mouvements</h2>
+        {% if mouvements_recents %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Produit</th>
+                        <th>Type</th>
+                        <th>Quantité</th>
+                        <th>Utilisateur</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mouvement in mouvements_recents %}
+                    <tr>
+                        <td>{{ mouvement.date|date:"d/m/Y H:i" }}</td>
+                        <td>{{ mouvement.produit.designation }}</td>
+                        <td>
+                            {% if mouvement.type_mouvement == 'ENTREE' %}
+                            <span class="badge badge-success">Entrée</span>
+                            {% else %}
+                            <span class="badge badge-danger">Sortie</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ mouvement.quantite }} {{ mouvement.produit.unite }}</td>
+                        <td>{{ mouvement.utilisateur.username }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> Aucun mouvement récent.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

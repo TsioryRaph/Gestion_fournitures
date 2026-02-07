@@ -1,0 +1,76 @@
+cat > fournitures\templates\fournitures\modifier_fourniture.html << 'EOF'
+{% extends 'fournitures/base.html' %}
+
+{% block content %}
+<h2>Modifier la fourniture</h2>
+
+<div style="max-width: 600px; margin: 0 auto;">
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label>Type:</label>
+            {{ form.type }}
+        </div>
+        
+        <div class="form-group">
+            <label>Référence:</label>
+            {{ form.reference }}
+        </div>
+        
+        <div class="form-group">
+            <label>Désignation:</label>
+            {{ form.designation }}
+        </div>
+        
+        <div class="form-group">
+            <label>Unité:</label>
+            {{ form.unite }}
+        </div>
+        
+        <div class="form-group">
+            <label>Stock actuel:</label>
+            {{ form.stock }}
+        </div>
+        
+        <div class="form-group">
+            <label>Stock maximum:</label>
+            {{ form.stock_max }}
+        </div>
+        
+        <div class="form-group">
+            <label>Seuil d'alerte:</label>
+            {{ form.seuil_alerte }}
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <button type="submit" class="btn btn-primary" style="padding: 12px 30px; font-size: 16px;">
+                💾 Enregistrer les modifications
+            </button>
+            <a href="{% url 'liste_stock' %}" class="btn" style="background: #6c757d; color: white; padding: 12px 30px; text-decoration: none;">
+                Annuler
+            </a>
+            <a href="{% url 'detail_fourniture' fourniture.id %}" class="btn" style="background: #17a2b8; color: white; padding: 12px 30px; text-decoration: none;">
+                Voir détails
+            </a>
+        </div>
+    </form>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const stockMaxInput = document.getElementById("id_stock_max");
+    const seuilAlerteInput = document.getElementById("id_seuil_alerte");
+
+    if (stockMaxInput && seuilAlerteInput) {
+        stockMaxInput.addEventListener("input", function () {
+            const stockMax = parseInt(stockMaxInput.value);
+
+            if (!isNaN(stockMax) && stockMax > 0) {
+                seuilAlerteInput.value = Math.floor(stockMax / 2);
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+EOF

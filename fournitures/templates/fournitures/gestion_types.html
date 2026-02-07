@@ -1,0 +1,49 @@
+cat > fournitures\templates\fournitures\gestion_types.html << 'EOF'
+{% extends 'fournitures/base.html' %}
+
+{% block content %}
+<h2><i class="fas fa-tags"></i> Gestion des types de fournitures</h2>
+
+<div style="max-width: 400px; margin-bottom: 30px;">
+    <h3>Ajouter un nouveau type</h3>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Nom du type:</label>
+            {{ form.nom }}
+        </div>
+        <button type="submit" class="btn btn-primary">Ajouter</button>
+    </form>
+</div>
+
+<h3>Types existants</h3>
+{% if types %}
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Nom</th>
+            <th>Nombre de fournitures</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for type in types %}
+        <tr>
+            <td>{{ type.id }}</td>
+            <td>{{ type.nom }}</td>
+            <td>{{ type.fournitures.count }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p style="background: #d1ecf1; padding: 15px; border-radius: 5px; color: #0c5460;">
+    ℹ️ Aucun type défini.
+</p>
+{% endif %}
+
+<a href="{% url 'dashboard' %}" class="btn btn-light" style="margin-top: 20px;">
+    <i class="fas fa-arrow-left"></i> Retour au tableau de bord
+</a>
+{% endblock %}
+EOF

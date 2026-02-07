@@ -1,0 +1,90 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Gestion Fournitures Bureau{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header avec logo -->
+        <header class="header">
+            <div class="logo">
+                <!-- Logo image (remplace l'icône) -->
+
+                <!-- Texte à côté du logo -->
+                <div class="logo-text">
+                    <h1>Gestion Fournitures</h1>  <!-- Retiré l'icône ici -->
+                    <p class="subtitle">Direction DSI</p>
+                </div>
+            </div>
+            <div class="user-info">
+                <span><i class="fas fa-user"></i> {{ user.username }}</span>
+                <a href="{% url 'logout' %}" class="btn btn-sm btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> Déconnexion
+                </a>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="navbar">
+            <a href="{% url 'dashboard' %}" {% if request.path == '/' %}class="active"{% endif %}>
+                <i class="fas fa-tachometer-alt"></i> Tableau de bord
+            </a>
+            <a href="{% url 'liste_stock' %}" {% if 'stock' in request.path %}class="active"{% endif %}>
+                <i class="fas fa-box-open"></i> Stock
+            </a>
+            <a href="{% url 'mouvement' %}" {% if 'mouvement' in request.path %}class="active"{% endif %}>
+                <i class="fas fa-exchange-alt"></i> Mouvements
+            </a>
+            <a href="{% url 'commande' %}" {% if 'commande' in request.path %}class="active"{% endif %}>
+                <i class="fas fa-shopping-cart"></i> Commandes
+            </a>
+            <a href="{% url 'statistiques' %}" {% if 'statistiques' in request.path %}class="active"{% endif %}>
+                <i class="fas fa-chart-bar"></i> Statistiques
+            </a>
+            <a href="{% url 'gestion_types' %}" {% if 'types' in request.path %}class="active"{% endif %}>
+                <i class="fas fa-tags"></i> Types
+            </a>
+        </nav>
+
+        <!-- Messages -->
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Main Content -->
+        <main class="main-content">
+            {% block content %}
+            {% endblock %}
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>© 2026 Gestion Fournitures Bureau - DSI | Version 1.0</p>
+        </footer>
+    </div>
+
+    <script>
+        // Auto-hide messages after 5 seconds
+        setTimeout(function() {
+            var messages = document.querySelectorAll('.alert');
+            messages.forEach(function(msg) {
+                msg.style.opacity = '0';
+                setTimeout(function() {
+                    msg.style.display = 'none';
+                }, 500);
+            });
+        }, 5000);
+    </script>
+</body>
+</html>

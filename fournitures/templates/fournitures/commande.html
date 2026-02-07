@@ -1,0 +1,156 @@
+{% extends 'fournitures/base.html' %}
+
+{% block title %}Gestion des commandes{% endblock %}
+
+{% block content %}
+<div class="commande-page">
+    <div class="page-header">
+        <h1><i class="fas fa-shopping-cart"></i> Gestion des commandes</h1>
+    </div>
+
+    <!-- Suggestions automatiques -->
+    <div class="section">
+        <h2><i class="fas fa-lightbulb"></i> Suggestions de commande</h2>
+        <p>Produits dont le stock est en dessous du seuil d'alerte</p>
+        
+        {% if produits_a_commander %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Produit</th>
+                        <th>Type</th>
+                        <th>Stock actuel</th>
+                        <th>Seuil alerte</th>
+                        <th>Stock max</th>
+                        <th>Quantité suggérée</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in produits_a_commander %}
+                    <tr class="alert-row">
+                        <td>
+                            <strong>{{ item.fourniture.reference }}</strong><br>
+                            {{ item.fourniture.designation }}
+                        </td>
+                        <td>{{ item.fourniture.type.nom }}</td>
+                        <td class="text-danger">{{ item.fourniture.stock }} {{ item.fourniture.unite }}</td>
+                        <td>{{ item.fourniture.seuil_alerte }} {{ item.fourniture.unite }}</td>
+                        <td>{{ item.fourniture.stock_max }} {{ item.fourniture.unite }}</td>
+                        <td>
+                            <strong class="text-primary">{{ item.quantite }} {{ item.fourniture.unite }}</strong>
+                        </td>
+                        <td>
+                            <form method="post" class="inline-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="produit" value="{{ item.fourniture.id }}">
+                                <input type="hidden" name="quantite" value="{{ item.quantite }}">
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-cart-plus"></i> Commander
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i> Aucun produit ne nécessite de commande pour le moment.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Formulaire de commande manuelle -->
+    <div class="section">
+        <h2><i class="fas fa-edit"></i> Nouvelle commande manuelle</h2>
+        <div class="form-container">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.produit.id_for_label }}">Produit </label>
+                        {{ form.produit }}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.quantite.id_for_label }}">Quantité </label>
+                        {{ form.quantite }}
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.notes.id_for_label }}">Notes (optionnel)</label>
+                    {{ form.notes }}
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus-circle"></i> Créer la commande
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Commandes en attente -->
+    <div class="section">
+        <h2><i class="fas fa-clock"></i> Commandes en attente</h2>
+        
+        {% if commandes_attente %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Référence</th>
+                        <th>Produit</th>
+                        <th>Quantité</th>
+                        <th>Notes</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for commande in commandes_attente %}
+                    <tr>
+                        <td>{{ commande.date_creation|date:"d/m/Y" }}</td>
+                        <td>{{ commande.produit.reference }}</td>
+                        <td>{{ commande.produit.designation }}</td>
+                        <td>{{ commande.quantite }} {{ commande.produit.unite }}</td>
+                        <td>{{ commande.notes|default:"-" }}</td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{% url 'valider_commande' commande.id %}" class="btn btn-sm btn-success">
+                                    <i class="fas fa-check"></i> Valider
+                                </a>
+                                <a href="#" class="btn btn-sm btn-danger">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> Aucune commande en attente.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+        <a href="{% url 'liste_commande' %}" class="btn btn-secondary">
+            <i class="fas fa-list"></i> Voir toutes les commandes
+        </a>
+        <a href="{% url 'liste_stock' %}" class="btn btn-light">
+            <i class="fas fa-arrow-left"></i> Retour au stock
+        </a>
+    </div>
+</div>
+{% endblock %}

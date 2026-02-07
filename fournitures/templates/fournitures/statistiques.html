@@ -1,0 +1,201 @@
+{% extends 'fournitures/base.html' %}
+{% load static %}
+
+{% block content %}
+<h2><i class="fas fa-chart-bar"></i> Statistiques</h2>
+
+<!-- Section des KPI -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0;">
+    <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;">
+        <h3 style="color: #3498db; font-size: 2.5rem; margin: 10px 0;">{{ total_fournitures }}</h3>
+        <p style="color: #7f8c8d; font-size: 1.1rem;">Fournitures totales</p>
+    </div>
+
+    <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;">
+        <h3 style="color: #2ecc71; font-size: 2.5rem; margin: 10px 0;">{{ valeur_stock }}</h3>
+        <p style="color: #7f8c8d; font-size: 1.1rem;">Valeur totale du stock</p>
+    </div>
+
+    <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;">
+        <h3 style="color: #e74c3c; font-size: 2.5rem; margin: 10px 0;">{{ produits_en_alerte }}</h3>
+        <p style="color: #7f8c8d; font-size: 1.1rem;">Produits en alerte</p>
+    </div>
+
+    <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;">
+        <h3 style="color: #f39c12; font-size: 2.5rem; margin: 10px 0;">{{ total_mouvements }}</h3>
+        <p style="color: #7f8c8d; font-size: 1.1rem;">Mouvements (30j)</p>
+    </div>
+</div>
+
+<!-- Tableau des produits en alerte -->
+<div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin: 30px 0;">
+    <h3 style="color: #2c3e50; margin-bottom: 20px;">
+        <i class="fas fa-exclamation-triangle" style="color: #e74c3c;"></i> Produits en alerte de stock
+    </h3>
+    {% if produits_bas_stock %}
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead style="background: #f8f9fa;">
+            <tr>
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Produit</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Type</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Stock actuel</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Seuil d'alerte</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for produit in produits_bas_stock %}
+            <tr style="border-bottom: 1px solid #dee2e6;">
+                <td style="padding: 12px;">{{ produit.designation }}</td>
+                <td style="padding: 12px;">{{ produit.type.nom }}</td>
+                <td style="padding: 12px; font-weight: bold; color: #e74c3c;">
+                    {{ produit.stock }}
+                </td>
+                <td style="padding: 12px;">{{ produit.seuil_alerte }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="background: #d1e7dd; padding: 20px; border-radius: 5px; color: #0f5132; text-align: center;">
+        <i class="fas fa-check-circle" style="margin-right: 8px;"></i>
+        ✅ Tous les stocks sont au-dessus du seuil d'alerte
+    </div>
+    {% endif %}
+</div>
+
+<!-- Top des produits utilisés -->
+<div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin: 30px 0;">
+    <h3 style="color: #2c3e50; margin-bottom: 20px;">
+        <i class="fas fa-trophy"></i> Top des produits les plus utilisés
+    </h3>
+    {% if top_sorties %}
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead style="background: #f8f9fa;">
+            <tr>
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Produit</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Type</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Sorties totales</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in top_sorties %}
+            <tr style="border-bottom: 1px solid #dee2e6;">
+                <td style="padding: 12px;">{{ item.produit__designation }}</td>
+                <td style="padding: 12px;">{{ item.produit__type__nom }}</td>
+                <td style="padding: 12px; font-weight: bold; color: #e74c3c;">
+                    {{ item.total }} unités
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="background: #d1ecf1; padding: 20px; border-radius: 5px; color: #0c5460; text-align: center;">
+        <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
+        ℹ️ Aucune donnée disponible
+    </div>
+    {% endif %}
+</div>
+
+<!-- Distribution par type (version simple) -->
+<div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin: 30px 0;">
+    <h3 style="color: #2c3e50; margin-bottom: 20px;">
+        <i class="fas fa-chart-pie"></i> Distribution par type
+    </h3>
+    {% if types %}
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead style="background: #f8f9fa;">
+            <tr>
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Type de fourniture</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Nombre de produits</th>
+                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Pourcentage</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for type in types %}
+            <tr style="border-bottom: 1px solid #dee2e6;">
+                <td style="padding: 12px;">{{ type.nom }}</td>
+                <td style="padding: 12px; font-weight: bold;">{{ type.count }}</td>
+                <td style="padding: 12px;">
+                    {% widthratio type.count total_fournitures 100 as pourcentage %}
+                    {{ pourcentage }}%
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div style="margin-top: 20px; font-size: 0.9rem; color: #7f8c8d;">
+        Total: {{ total_fournitures }} produits répartis en {{ types|length }} catégories
+    </div>
+    {% else %}
+    <div style="background: #d1ecf1; padding: 20px; border-radius: 5px; color: #0c5460; text-align: center;">
+        <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
+        ℹ️ Aucune donnée disponible
+    </div>
+    {% endif %}
+</div>
+
+<!-- Section Résumé -->
+<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; margin-top: 40px;">
+    <h3 style="color: white; margin-bottom: 20px;">
+        <i class="fas fa-chart-line"></i> Résumé des performances
+    </h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+        <div>
+            <h4 style="font-size: 1.2rem; margin-bottom: 10px;">📦 Stock</h4>
+            <p>• Total des fournitures : <strong>{{ total_fournitures }}</strong></p>
+            <p>• Valeur du stock : <strong>{{ valeur_stock }}</strong> unités</p>
+            <p>• Produits en alerte : <strong>{{ produits_en_alerte }}</strong></p>
+        </div>
+        <div>
+            <h4 style="font-size: 1.2rem; margin-bottom: 10px;">📊 Mouvements</h4>
+            <p>• Mouvements (30j) : <strong>{{ total_mouvements }}</strong></p>
+            <p>• Entrées : <strong>{{ total_entrees }}</strong></p>
+            <p>• Sorties : <strong>{{ total_sorties }}</strong></p>
+        </div>
+        <div>
+            <h4 style="font-size: 1.2rem; margin-bottom: 10px;">📈 Tendance</h4>
+            <p>• Ratio entrées/sorties : <strong>{{ ratio_entrees_sorties }}</strong></p>
+            <p>• Activité moyenne/jour : <strong>{{ activite_moyenne_jour }}</strong></p>
+            <p>• Taux d'alerte : <strong>{{ taux_alerte }}%</strong></p>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Styles supplémentaires pour améliorer l'apparence */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+}
+
+td, th {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #dee2e6;
+}
+
+tr:hover {
+    background: #f8f9fa;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.badge-primary { background: #e8f4fd; color: #3498db; }
+.badge-success { background: #d1e7dd; color: #0f5132; }
+.badge-danger { background: #f8d7da; color: #842029; }
+.badge-warning { background: #fff3cd; color: #664d03; }
+</style>
+{% endblock %}

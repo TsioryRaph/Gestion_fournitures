@@ -1,0 +1,169 @@
+{% extends 'fournitures/base.html' %}
+
+{% block title %}Détail {{ fourniture.reference }}{% endblock %}
+
+{% block content %}
+<div class="detail-page">
+    <div class="page-header">
+        <div class="header-left">
+            <h1>
+                <i class="fas fa-box"></i> {{ fourniture.reference }}
+                <span class="badge {% if fourniture.en_alerte %}badge-danger{% else %}badge-success{% endif %}">
+                    {% if fourniture.en_alerte %}
+                    <i class="fas fa-exclamation-triangle"></i> Alerte
+                    {% else %}
+                    <i class="fas fa-check-circle"></i> Normal
+                    {% endif %}
+                </span>
+            </h1>
+            <p class="subtitle">{{ fourniture.designation }}</p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'modifier_fourniture' fourniture.id %}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Modifier
+            </a>
+            <a href="{% url 'mouvement' %}" class="btn btn-primary">
+                <i class="fas fa-exchange-alt"></i> Mouvement
+            </a>
+        </div>
+    </div>
+
+    <!-- Info produit -->
+    <div class="product-card">
+        <div class="card-header">
+            <h3><i class="fas fa-info-circle"></i> Informations produit</h3>
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Type :</span>
+                    <span class="info-value">{{ fourniture.type.nom }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Référence :</span>
+                    <span class="info-value">{{ fourniture.reference }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Unité :</span>
+                    <span class="info-value">{{ fourniture.get_unite_display }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Date création :</span>
+                    <span class="info-value">{{ fourniture.date_creation|date:"d/m/Y" }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gestion du stock -->
+    <div class="stock-card">
+        <div class="card-header">
+            <h3><i class="fas fa-chart-line"></i> Gestion du stock</h3>
+        </div>
+        <div class="card-body">
+            <div class="stock-grid">
+                <div class="stock-item">
+                    <div class="stock-label">Stock actuel</div>
+                    <div class="stock-value {% if fourniture.en_alerte %}text-danger{% endif %}">
+                        {{ fourniture.stock }} {{ fourniture.unite }}
+                    </div>
+                </div>
+                <div class="stock-item">
+                    <div class="stock-label">Seuil d'alerte</div>
+                    <div class="stock-value">{{ fourniture.seuil_alerte }} {{ fourniture.unite }}</div>
+                </div>
+                <div class="stock-item">
+                    <div class="stock-label">Stock maximum</div>
+                    <div class="stock-value">{{ fourniture.stock_max }} {{ fourniture.unite }}</div>
+                </div>
+                <div class="stock-item">
+                    <div class="stock-label">À commander</div>
+                    <div class="stock-value text-primary">
+                        {{ fourniture.quantite_a_commander }} {{ fourniture.unite }}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Barre de progression -->
+            <div class="progress-container">
+                <div class="progress-label">
+                    <span>Niveau du stock ({{ fourniture.pourcentage_stock|floatformat:0 }}%)</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar 
+                        {% if fourniture.en_alerte %}bg-danger
+                        {% elif fourniture.pourcentage_stock > 80 %}bg-success
+                        {% else %}bg-warning{% endif %}"
+                        style="width: {{ fourniture.pourcentage_stock }}%">
+                    </div>
+                </div>
+                <div class="progress-markers">
+                    <span>Alerte: {{ fourniture.seuil_alerte }}</span>
+                    <span>Maximum: {{ fourniture.stock_max }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historique des mouvements -->
+    <div class="history-card">
+        <div class="card-header">
+            <h3><i class="fas fa-history"></i> Historique des mouvements</h3>
+        </div>
+        <div class="card-body">
+            {% if mouvements %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Quantité</th>
+                            <th>Utilisateur</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for mouvement in mouvements %}
+                        <tr>
+                            <td>{{ mouvement.date|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                {% if mouvement.type_mouvement == 'ENTREE' %}
+                                <span class="badge badge-success">Entrée</span>
+                                {% else %}
+                                <span class="badge badge-danger">Sortie</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ mouvement.quantite }} {{ mouvement.produit.unite }}</td>
+                            <td>{{ mouvement.utilisateur.username }}</td>
+                            <td>{{ mouvement.notes|default:"-" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Aucun mouvement enregistré pour ce produit.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Actions rapides -->
+    <div class="quick-actions">
+        <a href="{% url 'mouvement' %}" class="btn btn-success">
+            <i class="fas fa-plus-circle"></i> Nouvelle entrée
+        </a>
+        <a href="{% url 'mouvement' %}" class="btn btn-danger">
+            <i class="fas fa-minus-circle"></i> Nouvelle sortie
+        </a>
+        <a href="{% url 'commande' %}" class="btn btn-primary">
+            <i class="fas fa-shopping-cart"></i> Commander
+        </a>
+        <a href="{% url 'liste_stock' %}" class="btn btn-light">
+            <i class="fas fa-arrow-left"></i> Retour à la liste
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,61 @@
+cat > fournitures\templates\fournitures\liste_commande.html << 'EOF'
+{% extends 'fournitures/base.html' %}
+
+{% block content %}
+<h2><i class="fas fa-list"></i> Liste des commandes</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Référence</th>
+            <th>Produit</th>
+            <th>Quantité</th>
+            <th>Statut</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for commande in commandes %}
+        <tr>
+            <td>{{ commande.date_creation|date:"d/m/Y" }}</td>
+            <td>{{ commande.produit.reference }}</td>
+            <td>{{ commande.produit.designation }}</td>
+            <td>{{ commande.quantite }} {{ commande.produit.unite }}</td>
+            <td>
+                {% if commande.status == 'EN_ATTENTE' %}
+                <span style="background: #ffc107; color: #212529; padding: 5px 10px; border-radius: 3px;">En attente</span>
+                {% elif commande.status == 'VALIDEE' %}
+                <span style="background: #17a2b8; color: white; padding: 5px 10px; border-radius: 3px;">Validée</span>
+                {% elif commande.status == 'RECUE' %}
+                <span style="background: #28a745; color: white; padding: 5px 10px; border-radius: 3px;">Reçue</span>
+                {% else %}
+                <span style="background: #6c757d; color: white; padding: 5px 10px; border-radius: 3px;">Annulée</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if commande.status == 'EN_ATTENTE' %}
+                <a href="{% url 'valider_commande' commande.id %}" class="btn btn-sm btn-success">Valider</a>
+                {% elif commande.status == 'VALIDEE' %}
+                <a href="{% url 'recevoir_commande' commande.id %}" class="btn btn-sm btn-primary">Marquer reçue</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" style="text-align: center; padding: 30px;">
+                <p>Aucune commande enregistrée.</p>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<a href="{% url 'commande' %}" class="btn btn-primary" style="margin-top: 20px;">
+    <i class="fas fa-plus"></i> Nouvelle commande
+</a>
+<a href="{% url 'dashboard' %}" class="btn btn-light" style="margin-top: 20px;">
+    <i class="fas fa-arrow-left"></i> Retour
+</a>
+{% endblock %}
+<EOF></EOF>

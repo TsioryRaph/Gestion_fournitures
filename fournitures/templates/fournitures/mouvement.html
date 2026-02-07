@@ -1,0 +1,131 @@
+{% extends 'fournitures/base.html' %}
+
+{% block title %}Mouvement de stock{% endblock %}
+
+{% block content %}
+<div class="mouvement-page">
+    <div class="page-header">
+        <h1><i class="fas fa-exchange-alt"></i> Mouvement de stock</h1>
+        <p>Enregistrer une entrée ou une sortie de stock</p>
+    </div>
+
+    <div class="form-container">
+        <form method="post" class="mouvement-form">
+            {% csrf_token %}
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="{{ form.produit.id_for_label }}">Produit </label>
+                    {{ form.produit }}
+                    {% if form.produit.errors %}
+                    <div class="error">{{ form.produit.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.type_mouvement.id_for_label }}">Type de mouvement </label>
+                    {{ form.type_mouvement }}
+                    {% if form.type_mouvement.errors %}
+                    <div class="error">{{ form.type_mouvement.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="{{ form.quantite.id_for_label }}">Quantité </label>
+                    {{ form.quantite }}
+                    {% if form.quantite.errors %}
+                    <div class="error">{{ form.quantite.errors }}</div>
+                    {% endif %}
+                    <small class="form-text">Entrez la quantité pour ce mouvement</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.notes.id_for_label }}">Notes (optionnel)</label>
+                    {{ form.notes }}
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="fas fa-save"></i> Enregistrer le mouvement
+                </button>
+                <a href="{% url 'liste_stock' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Annuler
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Info produit sélectionné -->
+    <div class="product-info" id="product-info" style="display: none;">
+        <h3><i class="fas fa-info-circle"></i> Information produit</h3>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Stock actuel :</span>
+                <span class="info-value" id="current-stock">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Stock maximum :</span>
+                <span class="info-value" id="max-stock">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Seuil d'alerte :</span>
+                <span class="info-value" id="alert-threshold">-</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const produitSelect = document.getElementById('id_produit');
+    const productInfo = document.getElementById('product-info');
+    const currentStock = document.getElementById('current-stock');
+    const maxStock = document.getElementById('max-stock');
+    const alertThreshold = document.getElementById('alert-threshold');
+    
+    // Données des produits (serait mieux via API)
+    const produitsData = {
+        {% for f in form.fields.produit.queryset %}
+        {{ f.id }}: {
+            stock: {{ f.stock }},
+            stock_max: {{ f.stock_max }},
+            seuil_alerte: {{ f.seuil_alerte }},
+            unite: "{{ f.unite }}"
+        },
+        {% endfor %}
+    };
+    
+    produitSelect.addEventListener('change', function() {
+        const produitId = this.value;
+        
+        if (produitId && produitsData[produitId]) {
+            const produit = produitsData[produitId];
+            
+            currentStock.textContent = produit.stock + ' ' + produit.unite;
+            maxStock.textContent = produit.stock_max + ' ' + produit.unite;
+            alertThreshold.textContent = produit.seuil_alerte + ' ' + produit.unite;
+            
+            // Mettre en évidence si en alerte
+            if (produit.stock <= produit.seuil_alerte) {
+                currentStock.style.color = '#dc3545';
+                currentStock.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + currentStock.textContent;
+            } else {
+                currentStock.style.color = '';
+            }
+            
+            productInfo.style.display = 'block';
+        } else {
+            productInfo.style.display = 'none';
+        }
+    });
+    
+    // Déclencher l'événement au chargement si un produit est déjà sélectionné
+    if (produitSelect.value) {
+        produitSelect.dispatchEvent(new Event('change'));
+    }
+});
+</script>
+{% endblock %}

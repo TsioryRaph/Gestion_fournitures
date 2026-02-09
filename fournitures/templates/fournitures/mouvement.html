@@ -9,10 +9,38 @@
         <p>Enregistrer une entrée ou une sortie de stock</p>
     </div>
 
+    <!-- Messages de succès/erreur -->
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show">
+            {{ message }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Afficher les erreurs du formulaire -->
+    {% if form.errors %}
+    <div class="alert alert-danger">
+        <h5><i class="fas fa-exclamation-triangle"></i> Erreurs de validation</h5>
+        <ul>
+            {% for field, errors in form.errors.items %}
+                {% for error in errors %}
+                    <li>{{ field|title }}: {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
     <div class="form-container">
-        <form method="post" class="mouvement-form">
+        <form method="post" class="mouvement-form" id="mouvement-form">
             {% csrf_token %}
-            
+
             <div class="form-row">
                 <div class="form-group">
                     <label for="{{ form.produit.id_for_label }}">Produit </label>
@@ -21,7 +49,7 @@
                     <div class="error">{{ form.produit.errors }}</div>
                     {% endif %}
                 </div>
-                
+
                 <div class="form-group">
                     <label for="{{ form.type_mouvement.id_for_label }}">Type de mouvement </label>
                     {{ form.type_mouvement }}
@@ -30,7 +58,7 @@
                     {% endif %}
                 </div>
             </div>
-            
+
             <div class="form-row">
                 <div class="form-group">
                     <label for="{{ form.quantite.id_for_label }}">Quantité </label>
@@ -40,18 +68,18 @@
                     {% endif %}
                     <small class="form-text">Entrez la quantité pour ce mouvement</small>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="{{ form.notes.id_for_label }}">Notes (optionnel)</label>
                     {{ form.notes }}
                 </div>
             </div>
-            
+
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-lg">
                     <i class="fas fa-save"></i> Enregistrer le mouvement
                 </button>
-                <a href="{% url 'liste_stock' %}" class="btn btn-secondary">
+                <a href="{% url 'dashboard' %}" class="btn btn-secondary">
                     <i class="fas fa-times"></i> Annuler
                 </a>
             </div>
@@ -74,10 +102,44 @@
                 <span class="info-label">Seuil d'alerte :</span>
                 <span class="info-value" id="alert-threshold">-</span>
             </div>
+            <div class="info-item">
+                <span class="info-label">Statut stock :</span>
+                <span class="info-value" id="stock-status">-</span>
+            </div>
+        </div>
+        <div class="alert alert-warning mt-2" id="stock-alert" style="display: none;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span id="alert-message"></span>
         </div>
     </div>
 </div>
 
+<style>
+/* ... (garder le CSS existant) ... */
+
+#stock-alert {
+    padding: 10px;
+    margin-top: 10px;
+    font-size: 0.9rem;
+}
+
+.stock-ok {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.stock-low {
+    color: #ffc107;
+    font-weight: bold;
+}
+
+.stock-critical {
+    color: #dc3545;
+    font-weight: bold;
+}
+</style>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const produitSelect = document.getElementById('id_produit');
@@ -85,47 +147,141 @@ document.addEventListener('DOMContentLoaded', function() {
     const currentStock = document.getElementById('current-stock');
     const maxStock = document.getElementById('max-stock');
     const alertThreshold = document.getElementById('alert-threshold');
-    
-    // Données des produits (serait mieux via API)
-    const produitsData = {
-        {% for f in form.fields.produit.queryset %}
-        {{ f.id }}: {
-            stock: {{ f.stock }},
-            stock_max: {{ f.stock_max }},
-            seuil_alerte: {{ f.seuil_alerte }},
-            unite: "{{ f.unite }}"
-        },
-        {% endfor %}
-    };
-    
+    const stockStatus = document.getElementById('stock-status');
+    const stockAlert = document.getElementById('stock-alert');
+    const alertMessage = document.getElementById('alert-message');
+    const quantiteInput = document.getElementById('id_quantite');
+    const typeMouvementSelect = document.getElementById('id_type_mouvement');
+
+    // Fonction pour récupérer les données du produit via AJAX
+    function getProduitData(produitId) {
+        if (!produitId) return;
+
+        fetch(`/api/produit/${produitId}/info/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur réseau');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    updateProductInfo(data);
+                } else {
+                    console.error('Erreur:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Erreur fetch:', error);
+                // Fallback: utiliser les données initiales si disponibles
+                if (window.initialProduitsData && window.initialProduitsData[produitId]) {
+                    updateProductInfo(window.initialProduitsData[produitId]);
+                }
+            });
+    }
+
+    // Fonction pour mettre à jour l'interface avec les données du produit
+    function updateProductInfo(data) {
+        currentStock.textContent = data.stock + ' ' + data.unite;
+        maxStock.textContent = data.stock_max + ' ' + data.unite;
+        alertThreshold.textContent = data.seuil_alerte + ' ' + data.unite;
+
+        // Déterminer le statut du stock
+        let statusText = '';
+        let statusClass = '';
+
+        if (data.stock <= data.seuil_alerte) {
+            if (data.stock === 0) {
+                statusText = 'CRITIQUE (Stock épuisé)';
+                statusClass = 'stock-critical';
+                alertMessage.textContent = 'Stock épuisé! Commander immédiatement.';
+                stockAlert.style.display = 'block';
+            } else {
+                statusText = 'FAIBLE (En alerte)';
+                statusClass = 'stock-low';
+                alertMessage.textContent = `Stock sous le seuil (${data.seuil_alerte})`;
+                stockAlert.style.display = 'block';
+            }
+        } else if (data.stock <= data.seuil_alerte * 2) {
+            statusText = 'MOYEN';
+            statusClass = 'stock-low';
+            alertMessage.textContent = `Stock approche du seuil d'alerte`;
+            stockAlert.style.display = 'block';
+        } else {
+            statusText = 'BON';
+            statusClass = 'stock-ok';
+            stockAlert.style.display = 'none';
+        }
+
+        stockStatus.textContent = statusText;
+        stockStatus.className = 'info-value ' + statusClass;
+        currentStock.className = 'info-value ' + statusClass;
+
+        productInfo.style.display = 'block';
+    }
+
+    // Écouter les changements de produit
     produitSelect.addEventListener('change', function() {
         const produitId = this.value;
-        
-        if (produitId && produitsData[produitId]) {
-            const produit = produitsData[produitId];
-            
-            currentStock.textContent = produit.stock + ' ' + produit.unite;
-            maxStock.textContent = produit.stock_max + ' ' + produit.unite;
-            alertThreshold.textContent = produit.seuil_alerte + ' ' + produit.unite;
-            
-            // Mettre en évidence si en alerte
-            if (produit.stock <= produit.seuil_alerte) {
-                currentStock.style.color = '#dc3545';
-                currentStock.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + currentStock.textContent;
-            } else {
-                currentStock.style.color = '';
-            }
-            
-            productInfo.style.display = 'block';
+        if (produitId) {
+            getProduitData(produitId);
         } else {
             productInfo.style.display = 'none';
         }
     });
-    
+
+    // Validation en temps réel de la quantité pour les sorties
+    function validateSortieQuantite() {
+        if (typeMouvementSelect.value === 'SORTIE' && produitSelect.value) {
+            const produitId = produitSelect.value;
+            const quantiteDemandee = parseFloat(quantiteInput.value) || 0;
+
+            if (quantiteDemandee > 0) {
+                fetch(`/api/produit/${produitId}/info/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (quantiteDemandee > data.stock) {
+                                quantiteInput.setCustomValidity(`Stock insuffisant! Disponible: ${data.stock} ${data.unite}`);
+                                quantiteInput.style.borderColor = '#dc3545';
+                            } else {
+                                quantiteInput.setCustomValidity('');
+                                quantiteInput.style.borderColor = '#28a745';
+                            }
+                        }
+                    });
+            }
+        }
+    }
+
+    quantiteInput.addEventListener('input', validateSortieQuantite);
+    typeMouvementSelect.addEventListener('change', validateSortieQuantite);
+
     // Déclencher l'événement au chargement si un produit est déjà sélectionné
     if (produitSelect.value) {
         produitSelect.dispatchEvent(new Event('change'));
     }
+
+    // Validation du formulaire avant soumission
+    document.getElementById('mouvement-form').addEventListener('submit', function(event) {
+        if (typeMouvementSelect.value === 'SORTIE' && produitSelect.value) {
+            const produitId = produitSelect.value;
+            const quantiteDemandee = parseFloat(quantiteInput.value) || 0;
+
+            // Validation synchrone pour éviter la soumission si erreur
+            fetch(`/api/produit/${produitId}/info/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && quantiteDemandee > data.stock) {
+                        event.preventDefault();
+                        alert(`Erreur: Stock insuffisant!\nDisponible: ${data.stock} ${data.unite}\nDemandé: ${quantiteDemandee} ${data.unite}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur validation:', error);
+                });
+        }
+    });
 });
 </script>
 {% endblock %}

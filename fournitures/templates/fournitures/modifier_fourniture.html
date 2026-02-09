@@ -1,76 +1,732 @@
-cat > fournitures\templates\fournitures\modifier_fourniture.html << 'EOF'
 {% extends 'fournitures/base.html' %}
 
-{% block content %}
-<h2>Modifier la fourniture</h2>
+{% block title %}Modifier la fourniture{% endblock %}
 
-<div style="max-width: 600px; margin: 0 auto;">
-    <form method="post">
-        {% csrf_token %}
-        
-        <div class="form-group">
-            <label>Type:</label>
-            {{ form.type }}
+{% block content %}
+<div class="modifier-fourniture-page">
+    <div class="page-header">
+        <h1><i class="fas fa-edit"></i> Modifier la fourniture</h1>
+        <div class="header-actions">
+            <a href="{% url 'liste_stock' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Retour au stock
+            </a>
+            <a href="{% url 'detail_fourniture' fourniture.id %}" class="btn btn-info">
+                <i class="fas fa-eye"></i> Voir détails
+            </a>
         </div>
-        
-        <div class="form-group">
-            <label>Référence:</label>
-            {{ form.reference }}
-        </div>
-        
-        <div class="form-group">
-            <label>Désignation:</label>
-            {{ form.designation }}
-        </div>
-        
-        <div class="form-group">
-            <label>Unité:</label>
-            {{ form.unite }}
-        </div>
-        
-        <div class="form-group">
-            <label>Stock actuel:</label>
-            {{ form.stock }}
-        </div>
-        
-        <div class="form-group">
-            <label>Stock maximum:</label>
-            {{ form.stock_max }}
-        </div>
-        
-        <div class="form-group">
-            <label>Seuil d'alerte:</label>
-            {{ form.seuil_alerte }}
-        </div>
-        
-        <div style="margin-top: 30px;">
-            <button type="submit" class="btn btn-primary" style="padding: 12px 30px; font-size: 16px;">
-                💾 Enregistrer les modifications
+    </div>
+
+    <!-- Messages d'alerte/succès -->
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message|safe }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
             </button>
-            <a href="{% url 'liste_stock' %}" class="btn" style="background: #6c757d; color: white; padding: 12px 30px; text-decoration: none;">
-                Annuler
-            </a>
-            <a href="{% url 'detail_fourniture' fourniture.id %}" class="btn" style="background: #17a2b8; color: white; padding: 12px 30px; text-decoration: none;">
-                Voir détails
-            </a>
         </div>
-    </form>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Formulaire de modification -->
+        <div class="col-lg-8">
+            <div class="section">
+                <h2><i class="fas fa-cogs"></i> Éditer les informations</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <form method="post" id="modifierForm">
+                            {% csrf_token %}
+
+                            <!-- Informations de base -->
+                            <div class="form-section mb-4">
+                                <h5 class="border-bottom pb-2 mb-3"><i class="fas fa-info-circle"></i> Informations de base</h5>
+                                <div class="row">
+                                    <div class="form-group col-md-6">
+                                        <label class="font-weight-bold">Référence *</label>
+                                        <input type="text" name="reference" value="{{ form.reference.value|default:'' }}"
+                                               class="form-control" required>
+                                        <small class="form-text text-muted">Doit commencer par 'F' (ex: F001)</small>
+                                        {% if form.reference.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {{ form.reference.errors }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="form-group col-md-6">
+                                        <label class="font-weight-bold">Type *</label>
+                                        <select name="type" class="form-select" required>
+                                            <option value="">Sélectionnez un type</option>
+                                            {% for choice in form.type.field.choices %}
+                                                <option value="{{ choice.0 }}"
+                                                        {% if form.type.value == choice.0 %}selected{% endif %}>
+                                                    {{ choice.1 }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                        {% if form.type.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {{ form.type.errors }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="font-weight-bold">Désignation *</label>
+                                    <input type="text" name="designation" value="{{ form.designation.value|default:'' }}"
+                                           class="form-control" required>
+                                    <small class="form-text text-muted">Nom complet du produit</small>
+                                    {% if form.designation.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {{ form.designation.errors }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="font-weight-bold">Description</label>
+                                    <textarea name="description" class="form-control" rows="3"
+                                              placeholder="Description optionnelle du produit...">{{ form.description.value|default:'' }}</textarea>
+                                    <small class="form-text text-muted">Informations supplémentaires (optionnel)</small>
+                                </div>
+                            </div>
+
+                            <!-- Gestion du stock -->
+                            <div class="form-section mb-4">
+                                <h5 class="border-bottom pb-2 mb-3"><i class="fas fa-chart-line"></i> Gestion du stock</h5>
+                                <div class="row">
+                                    <div class="form-group col-md-4">
+                                        <label class="font-weight-bold">Unité *</label>
+                                        <select name="unite" class="form-select" required>
+                                            <option value="">Sélectionnez une unité</option>
+                                            {% for choice in form.unite.field.choices %}
+                                                <option value="{{ choice.0 }}"
+                                                        {% if form.unite.value == choice.0 %}selected{% endif %}>
+                                                    {{ choice.1 }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                        <small class="form-text text-muted">Unité de mesure</small>
+                                        {% if form.unite.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {{ form.unite.errors }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="form-group col-md-4">
+                                        <label class="font-weight-bold">Stock actuel</label>
+                                        <input type="number" name="stock" value="{{ form.stock.value|default:'0' }}"
+                                               step="0.01" min="0" class="form-control">
+                                        <small class="form-text text-muted">Quantité disponible</small>
+                                        {% if form.stock.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {{ form.stock.errors }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="form-group col-md-4">
+                                        <label class="font-weight-bold">Statut</label>
+                                        <div class="form-check form-switch mt-2">
+                                            <input type="checkbox" name="actif"
+                                                   class="form-check-input" id="id_actif"
+                                                   {% if form.actif.value %}checked{% endif %}>
+                                            <label class="form-check-label" for="id_actif">
+                                                Actif
+                                            </label>
+                                        </div>
+                                        <small class="form-text text-muted">Désactiver pour masquer du système</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Paramètres d'alerte -->
+                            <div class="form-section mb-4">
+                                <h5 class="border-bottom pb-2 mb-3"><i class="fas fa-bell"></i> Paramètres d'alerte</h5>
+                                <div class="row">
+                                    <div class="form-group col-md-6">
+                                        <label class="font-weight-bold">Stock maximum *</label>
+                                        <div class="input-group">
+                                            <input type="number" name="stock_max"
+                                                   value="{{ form.stock_max.value|default:'10' }}"
+                                                   step="0.01" min="1" class="form-control" required
+                                                   id="stock_max_input">
+                                            <span class="input-group-text" id="stock_max_unit">
+                                                {{ form.unite.value|default:'unité' }}
+                                            </span>
+                                        </div>
+                                        <small class="form-text text-muted">Quantité maximale en stock</small>
+                                        {% if form.stock_max.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {{ form.stock_max.errors }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="form-group col-md-6">
+                                        <label class="font-weight-bold">Seuil d'alerte *</label>
+                                        <div class="input-group">
+                                            <input type="number" name="seuil_alerte"
+                                                   value="{{ form.seuil_alerte.value|default:'5' }}"
+                                                   step="0.01" min="0" class="form-control" required
+                                                   id="seuil_alerte_input">
+                                            <span class="input-group-text" id="seuil_alerte_unit">
+                                                {{ form.unite.value|default:'unité' }}
+                                            </span>
+                                        </div>
+                                        <small class="form-text text-muted">Alerte quand stock ≤ cette valeur</small>
+                                        <div class="form-text">
+                                            <span id="seuil_info" class="badge bg-info"></span>
+                                        </div>
+                                        {% if form.seuil_alerte.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {{ form.seuil_alerte.errors }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Indicateur visuel -->
+                                <div class="mt-4">
+                                    <label class="font-weight-bold mb-2">Niveau de stock recommandé :</label>
+                                    <div class="progress" style="height: 20px;">
+                                        <div id="stock_progress" class="progress-bar" role="progressbar"
+                                             style="width: 50%"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between mt-1">
+                                        <small class="text-muted">0</small>
+                                        <small id="seuil_indicator" class="font-weight-bold text-warning">Seuil alerte</small>
+                                        <small id="max_indicator" class="font-weight-bold text-success">Stock max</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Boutons d'action -->
+                            <div class="form-actions mt-4 pt-3 border-top">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <button type="submit" name="save" class="btn btn-primary btn-lg">
+                                            <i class="fas fa-save"></i> Enregistrer les modifications
+                                        </button>
+                                        <button type="submit" name="save_and_view" class="btn btn-info btn-lg">
+                                            <i class="fas fa-save"></i> Enregistrer & Voir
+                                        </button>
+                                    </div>
+                                    <div>
+                                        <a href="{% url 'liste_stock' %}" class="btn btn-outline-secondary btn-lg">
+                                            <i class="fas fa-times"></i> Annuler
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panneau latéral - Informations et statistiques -->
+        <div class="col-lg-4">
+            <!-- Informations actuelles -->
+            <div class="section">
+                <h2><i class="fas fa-chart-pie"></i> Informations actuelles</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="info-section mb-3">
+                            <h5 class="border-bottom pb-2 mb-3">État du produit</h5>
+                            <div class="info-item mb-2">
+                                <span class="font-weight-bold">Référence :</span>
+                                <span class="float-right badge badge-secondary">{{ fourniture.reference }}</span>
+                            </div>
+                            <div class="info-item mb-2">
+                                <span class="font-weight-bold">Type :</span>
+                                <span class="float-right badge badge-info">{{ fourniture.type.nom|default:"-" }}</span>
+                            </div>
+                            <div class="info-item mb-2">
+                                <span class="font-weight-bold">Unité :</span>
+                                <span class="float-right">{{ fourniture.unite }}</span>
+                            </div>
+                            <div class="info-item mb-2">
+                                <span class="font-weight-bold">Statut :</span>
+                                <span class="float-right">
+                                    {% if fourniture.actif %}
+                                    <span class="badge bg-success">Actif</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Inactif</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="info-section mb-3">
+                            <h5 class="border-bottom pb-2 mb-3">Niveau de stock</h5>
+                            <div class="info-item mb-2">
+                                <span class="font-weight-bold">Stock actuel :</span>
+                                <span class="float-right font-weight-bold {% if fourniture.stock <= 0 %}text-danger{% elif fourniture.stock <= fourniture.seuil_alerte %}text-warning{% else %}text-success{% endif %}">
+                                    {{ fourniture.stock }} {{ fourniture.unite }}
+                                </span>
+                            </div>
+                            <div class="info-item mb-2">
+                                <span class="font-weight-bold">Seuil d'alerte :</span>
+                                <span class="float-right">{{ fourniture.seuil_alerte }} {{ fourniture.unite }}</span>
+                            </div>
+                            <div class="info-item mb-2">
+                                <span class="font-weight-bold">Stock maximum :</span>
+                                <span class="float-right">{{ fourniture.stock_max }} {{ fourniture.unite }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Barre de progression actuelle -->
+                        <div class="info-section">
+                            <h5 class="border-bottom pb-2 mb-3">Niveau actuel</h5>
+                            <div class="progress mb-2" style="height: 15px;">
+                                <div class="progress-bar
+                                    {% if fourniture.stock <= 0 %}bg-danger
+                                    {% elif fourniture.stock <= fourniture.seuil_alerte %}bg-warning
+                                    {% else %}bg-success{% endif %}"
+                                     style="width: {% if fourniture.stock_max > 0 %}{{ fourniture.stock|floatformat:0 }}{% else %}0{% endif %}%">
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">0</small>
+                                <small class="text-warning font-weight-bold">{{ fourniture.seuil_alerte }} (seuil)</small>
+                                <small class="text-success font-weight-bold">{{ fourniture.stock_max }} (max)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions rapides -->
+            <div class="section">
+                <h2><i class="fas fa-bolt"></i> Actions rapides</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'detail_fourniture' fourniture.id %}" class="btn btn-outline-info btn-block">
+                                <i class="fas fa-eye me-2"></i> Voir les détails complets
+                            </a>
+                            <a href="{% url 'mouvement' %}?produit={{ fourniture.id }}" class="btn btn-outline-success btn-block">
+                                <i class="fas fa-exchange-alt me-2"></i> Ajouter un mouvement
+                            </a>
+                            {% if fourniture.stock <= fourniture.seuil_alerte %}
+                            <a href="{% url 'commande' %}?produit={{ fourniture.id }}" class="btn btn-outline-warning btn-block">
+                                <i class="fas fa-shopping-cart me-2"></i> Créer une commande
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'liste_stock' %}" class="btn btn-outline-secondary btn-block">
+                                <i class="fas fa-list me-2"></i> Retour à la liste
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistiques rapides -->
+            <div class="section">
+                <h2><i class="fas fa-chart-bar"></i> Statistiques</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="stats-grid">
+                            <div class="stat-item text-center p-3 border rounded">
+                                <div class="stat-value display-6 text-primary">{{ fourniture.stock }}</div>
+                                <div class="stat-label text-muted">Stock actuel</div>
+                            </div>
+                            <div class="stat-item text-center p-3 border rounded">
+                                <div class="stat-value display-6 {% if fourniture.stock <= fourniture.seuil_alerte %}text-danger{% else %}text-success{% endif %}">
+                                    {{ fourniture.seuil_alerte }}
+                                </div>
+                                <div class="stat-label text-muted">Seuil alerte</div>
+                            </div>
+                        </div>
+                        <div class="mt-3 text-center">
+                            <span class="badge {% if fourniture.stock <= fourniture.seuil_alerte %}bg-danger{% else %}bg-success{% endif %} p-2">
+                                <i class="fas {% if fourniture.stock <= fourniture.seuil_alerte %}fa-exclamation-triangle{% else %}fa-check-circle{% endif %} me-1"></i>
+                                {% if fourniture.stock <= fourniture.seuil_alerte %}EN ALERTE{% else %}NIVEAU OK{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const stockMaxInput = document.getElementById("id_stock_max");
-    const seuilAlerteInput = document.getElementById("id_seuil_alerte");
+    // Récupérer les éléments du formulaire
+    const stockMaxInput = document.getElementById('stock_max_input');
+    const seuilAlerteInput = document.getElementById('seuil_alerte_input');
+    const uniteInput = document.querySelector("select[name='unite']");
+    const stockInput = document.querySelector("input[name='stock']");
 
-    if (stockMaxInput && seuilAlerteInput) {
-        stockMaxInput.addEventListener("input", function () {
-            const stockMax = parseInt(stockMaxInput.value);
+    // Mettre à jour les unités
+    function updateUnits() {
+        const uniteValue = uniteInput ? uniteInput.value : 'unité';
+        document.getElementById('stock_max_unit').textContent = uniteValue;
+        document.getElementById('seuil_alerte_unit').textContent = uniteValue;
+    }
 
-            if (!isNaN(stockMax) && stockMax > 0) {
-                seuilAlerteInput.value = Math.floor(stockMax / 2);
+    // Mettre à jour l'indicateur de seuil
+    function updateSeuilInfo() {
+        if (stockMaxInput && seuilAlerteInput) {
+            const stockMax = parseFloat(stockMaxInput.value) || 0;
+            const seuilAlerte = parseFloat(seuilAlerteInput.value) || 0;
+
+            if (stockMax > 0 && seuilAlerte > 0) {
+                const pourcentage = Math.round((seuilAlerte / stockMax) * 100);
+
+                // Mettre à jour l'indicateur
+                const seuilInfo = document.getElementById('seuil_info');
+                if (seuilInfo) {
+                    seuilInfo.textContent = `Seuil = ${pourcentage}% du stock max`;
+                }
+
+                // Mettre à jour la barre de progression
+                const stockProgress = document.getElementById('stock_progress');
+                if (stockProgress) {
+                    stockProgress.style.width = `${pourcentage}%`;
+
+                    // Changer la couleur selon le pourcentage
+                    if (pourcentage <= 30) {
+                        stockProgress.className = 'progress-bar bg-danger';
+                    } else if (pourcentage <= 50) {
+                        stockProgress.className = 'progress-bar bg-warning';
+                    } else {
+                        stockProgress.className = 'progress-bar bg-success';
+                    }
+                }
+
+                // Mettre à jour les indicateurs
+                const seuilIndicator = document.getElementById('seuil_indicator');
+                const maxIndicator = document.getElementById('max_indicator');
+
+                if (seuilIndicator) {
+                    seuilIndicator.textContent = `${seuilAlerte} (seuil)`;
+                }
+
+                if (maxIndicator) {
+                    maxIndicator.textContent = `${stockMax} (max)`;
+                }
             }
+        }
+    }
+
+    // Mettre le seuil d'alerte à la moitié du stock max lors de la modification
+    function setSeuilFromStockMax() {
+        if (stockMaxInput && seuilAlerteInput) {
+            const stockMax = parseFloat(stockMaxInput.value) || 0;
+
+            if (stockMax > 0) {
+                // Calculer le seuil recommandé (moitié du stock max)
+                const seuilRecommande = Math.floor(stockMax / 2);
+                seuilAlerteInput.value = seuilRecommande;
+
+                // Mettre à jour l'affichage
+                updateSeuilInfo();
+            }
+        }
+    }
+
+    // Vérifier le stock par rapport au seuil d'alerte
+    function checkStockAlert() {
+        if (stockInput && seuilAlerteInput) {
+            const stock = parseFloat(stockInput.value) || 0;
+            const seuil = parseFloat(seuilAlerteInput.value) || 0;
+
+            if (stock <= seuil) {
+                stockInput.classList.add('is-invalid');
+                stockInput.classList.remove('is-valid');
+            } else {
+                stockInput.classList.remove('is-invalid');
+                stockInput.classList.add('is-valid');
+            }
+        }
+    }
+
+    // Écouter les changements
+    if (stockMaxInput) {
+        stockMaxInput.addEventListener('input', function() {
+            setSeuilFromStockMax();
+            updateUnits();
         });
     }
+
+    if (seuilAlerteInput) {
+        seuilAlerteInput.addEventListener('input', updateSeuilInfo);
+    }
+
+    if (uniteInput) {
+        uniteInput.addEventListener('change', updateUnits);
+    }
+
+    if (stockInput) {
+        stockInput.addEventListener('input', checkStockAlert);
+    }
+
+    // Initialiser
+    updateUnits();
+    updateSeuilInfo();
+    checkStockAlert();
+
+    // Validation du formulaire avant soumission
+    const form = document.getElementById('modifierForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            let isValid = true;
+            let errorMessages = [];
+
+            // Vérifier que le stock max est supérieur au seuil
+            if (stockMaxInput && seuilAlerteInput) {
+                const stockMax = parseFloat(stockMaxInput.value) || 0;
+                const seuilAlerte = parseFloat(seuilAlerteInput.value) || 0;
+
+                if (stockMax <= seuilAlerte) {
+                    isValid = false;
+                    errorMessages.push('Le stock maximum doit être supérieur au seuil d\'alerte.');
+                }
+            }
+
+            // Vérifier le format de la référence
+            const referenceInput = document.querySelector("input[name='reference']");
+            if (referenceInput && referenceInput.value) {
+                if (!referenceInput.value.startsWith('F')) {
+                    isValid = false;
+                    errorMessages.push('La référence doit commencer par "F" (ex: F001).');
+                }
+            }
+
+            if (!isValid) {
+                e.preventDefault();
+                alert('Veuillez corriger les erreurs suivantes :\n\n' + errorMessages.join('\n'));
+                return false;
+            }
+
+            // Confirmation avant soumission
+            if (!confirm('Êtes-vous sûr de vouloir enregistrer les modifications ?')) {
+                e.preventDefault();
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+    // Auto-hide messages after 5 seconds
+    setTimeout(function() {
+        var alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function(alert) {
+            var bootstrapAlert = new bootstrap.Alert(alert);
+            bootstrapAlert.close();
+        });
+    }, 5000);
 });
 </script>
+
+<style>
+.modifier-fourniture-page .section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.header-actions .btn {
+    margin-left: 0.5rem;
+}
+
+.messages-container {
+    margin-bottom: 2rem;
+}
+
+.alert {
+    border-radius: 8px;
+    border: none;
+}
+
+.alert-dismissible .close {
+    padding: 0.75rem 1.25rem;
+}
+
+.form-section {
+    margin-bottom: 2rem;
+}
+
+.form-section h5 {
+    color: #495057;
+    font-weight: 600;
+}
+
+.form-control, .form-select {
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    transition: all 0.3s;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+    transform: translateY(-1px);
+}
+
+.input-group-text {
+    background-color: #e9ecef;
+    border: 1px solid #ced4da;
+    color: #495057;
+}
+
+.progress {
+    border-radius: 10px;
+    overflow: hidden;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+.badge {
+    font-size: 85%;
+    font-weight: 500;
+}
+
+.badge-pill {
+    padding-right: 0.8em;
+    padding-left: 0.8em;
+}
+
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+}
+
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    border-radius: 10px 10px 0 0 !important;
+    padding: 1rem 1.5rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.info-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-section {
+    margin-bottom: 1.5rem;
+}
+
+.info-section h5 {
+    color: #495057;
+    font-weight: 600;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.stat-item {
+    background: #f8f9fa;
+}
+
+.stat-value {
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.d-grid {
+    display: grid;
+}
+
+.gap-2 {
+    gap: 1rem;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .header-actions {
+        margin-top: 1rem;
+        width: 100%;
+    }
+
+    .header-actions .btn {
+        width: 100%;
+        margin: 0.25rem 0;
+    }
+
+    .form-actions .d-flex {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 {% endblock %}
-EOF

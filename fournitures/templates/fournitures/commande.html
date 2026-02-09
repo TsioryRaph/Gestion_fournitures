@@ -6,59 +6,275 @@
 <div class="commande-page">
     <div class="page-header">
         <h1><i class="fas fa-shopping-cart"></i> Gestion des commandes</h1>
+        <div class="header-actions">
+            <a href="{% url 'liste_commande' %}" class="btn btn-secondary">
+                <i class="fas fa-list"></i> Historique complet
+            </a>
+        </div>
     </div>
 
-    <!-- Suggestions automatiques -->
+    <!-- Messages d'alerte/succès -->
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message|safe }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Suggestions automatiques - TOUTES les fournitures en alerte -->
     <div class="section">
-        <h2><i class="fas fa-lightbulb"></i> Suggestions de commande</h2>
-        <p>Produits dont le stock est en dessous du seuil d'alerte</p>
-        
-        {% if produits_a_commander %}
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2><i class="fas fa-lightbulb"></i> Fournitures en alerte - Suggestions de commande</h2>
+            <span class="badge badge-warning badge-pill">{{ total_alertes }}</span>
+        </div>
+        <p>Tous les produits dont le stock est en dessous du seuil d'alerte</p>
+
+        {% if produits_en_alerte %}
         <div class="table-responsive">
-            <table class="table">
-                <thead>
+            <table class="table table-hover">
+                <thead class="thead-dark">
                     <tr>
                         <th>Produit</th>
                         <th>Type</th>
                         <th>Stock actuel</th>
                         <th>Seuil alerte</th>
                         <th>Stock max</th>
-                        <th>Quantité suggérée</th>
-                        <th>Action</th>
+                        <th>Quantité à commander</th>
+                        <th>Commande en cours</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in produits_a_commander %}
-                    <tr class="alert-row">
+                    {% for item in produits_en_alerte %}
+                    <tr class="{% if item.statut_commande == 'VALIDEE' %}table-primary{% elif item.statut_commande == 'EN_COURS' %}table-info{% elif item.statut_commande == 'EN_ATTENTE' %}table-warning{% elif item.statut_commande == 'RECUE' %}table-success{% else %}table-danger{% endif %}">
                         <td>
                             <strong>{{ item.fourniture.reference }}</strong><br>
-                            {{ item.fourniture.designation }}
+                            <small class="text-muted">{{ item.fourniture.designation }}</small>
                         </td>
-                        <td>{{ item.fourniture.type.nom }}</td>
-                        <td class="text-danger">{{ item.fourniture.stock }} {{ item.fourniture.unite }}</td>
+                        <td>
+                            <span class="badge badge-info">{{ item.fourniture.type.nom }}</span>
+                        </td>
+                        <td>
+                            <span class="font-weight-bold {% if item.fourniture.stock <= 0 %}text-danger{% else %}text-warning{% endif %}">
+                                {{ item.fourniture.stock }} {{ item.fourniture.unite }}
+                            </span>
+                            <div class="progress mt-1" style="height: 5px;">
+                                <div class="progress-bar bg-{% if item.fourniture.stock <= 0 %}danger{% else %}warning{% endif %}"
+                                     style="width: {{ item.pourcentage }}%">
+                                </div>
+                            </div>
+                        </td>
                         <td>{{ item.fourniture.seuil_alerte }} {{ item.fourniture.unite }}</td>
                         <td>{{ item.fourniture.stock_max }} {{ item.fourniture.unite }}</td>
                         <td>
-                            <strong class="text-primary">{{ item.quantite }} {{ item.fourniture.unite }}</strong>
+                            {% if item.quantite_a_commander > 0 %}
+                            <span class="badge badge-primary p-2">
+                                {{ item.quantite_a_commander }} {{ item.fourniture.unite }}
+                            </span>
+                            {% else %}
+                            <span class="badge badge-success p-2">
+                                OK
+                            </span>
+                            {% endif %}
                         </td>
                         <td>
-                            <form method="post" class="inline-form">
+                            {% if item.commande_active %}
+                                {% if item.statut_commande == 'VALIDEE' %}
+                                <span class="badge badge-primary">
+                                    <i class="fas fa-check-circle"></i> Validée
+                                </span>
+                                {% elif item.statut_commande == 'EN_COURS' %}
+                                <span class="badge badge-info">
+                                    <i class="fas fa-truck"></i> En cours
+                                </span>
+                                {% elif item.statut_commande == 'EN_ATTENTE' %}
+                                <span class="badge badge-warning">
+                                    <i class="fas fa-clock"></i> En attente
+                                </span>
+                                {% elif item.statut_commande == 'RECUE' %}
+                                <span class="badge badge-success">
+                                    <i class="fas fa-check-double"></i> Reçue
+                                </span>
+                                {% endif %}
+                                <br>
+                                <small class="text-muted">Q: {{ item.quantite_commande }} - N°: {{ item.commande_active.numero }}</small>
+                            {% else %}
+                            <span class="badge badge-secondary">
+                                <i class="fas fa-times-circle"></i> Aucune
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.quantite_a_commander > 0 and not item.commande_active %}
+                            <!-- Formulaire pour créer une commande automatique -->
+                            <form method="post" class="d-inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="produit" value="{{ item.fourniture.id }}">
-                                <input type="hidden" name="quantite" value="{{ item.quantite }}">
-                                <button type="submit" class="btn btn-sm btn-primary">
+                                <input type="hidden" name="quantite" value="{{ item.quantite_a_commander }}">
+                                <input type="hidden" name="notes" value="Commande automatique - Stock bas: {{ item.fourniture.stock }}/{{ item.fourniture.stock_max }}">
+                                <button type="submit" class="btn btn-sm btn-success mb-1" title="Créer une commande">
                                     <i class="fas fa-cart-plus"></i> Commander
                                 </button>
                             </form>
+                            {% elif item.commande_active %}
+                            <!-- Actions selon le statut de la commande existante -->
+                            <div class="btn-group-vertical btn-group-sm">
+                                {% if item.commande_active.status == 'EN_ATTENTE' %}
+                                <form method="post" action="{% url 'valider_commande' item.commande_active.id %}" class="mb-1">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-success btn-block"
+                                            onclick="return confirm('Valider cette commande ?');"
+                                            title="Valider la commande">
+                                        <i class="fas fa-check"></i> Valider
+                                    </button>
+                                </form>
+                                {% elif item.commande_active.status == 'VALIDEE' %}
+                                <form method="post" action="{% url 'mettre_en_cours_commande' item.commande_active.id %}" class="mb-1">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-info btn-block"
+                                            onclick="return confirm('Marquer comme en cours de livraison ?');"
+                                            title="Mettre en cours">
+                                        <i class="fas fa-truck"></i> En cours
+                                    </button>
+                                </form>
+                                {% elif item.commande_active.status == 'EN_COURS' %}
+                                <form method="post" action="{% url 'recevoir_commande' item.commande_active.id %}" class="mb-1">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-success btn-block"
+                                            onclick="return confirm('Recevoir cette commande ? Le stock sera mis à jour.');"
+                                            title="Recevoir la commande">
+                                        <i class="fas fa-check-double"></i> Recevoir
+                                    </button>
+                                </form>
+                                {% endif %}
+
+                                <!-- Bouton annuler pour tous les statuts sauf RECUE et ANNULEE -->
+                                {% if item.commande_active.status != 'RECUE' and item.commande_active.status != 'ANNULEE' %}
+                                <form method="post" action="{% url 'annuler_commande' item.commande_active.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-danger btn-block"
+                                            onclick="return confirm('Annuler cette commande ?');"
+                                            title="Annuler la commande">
+                                        <i class="fas fa-ban"></i> Annuler
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+
+                            <a href="{% url 'detail_fourniture' item.fourniture.id %}"
+                               class="btn btn-sm btn-secondary mt-1" title="Voir les détails">
+                                <i class="fas fa-eye"></i> Détails
+                            </a>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+
+        <!-- Statistiques des alertes -->
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-chart-bar"></i> Statistiques des alertes</h5>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Total en alerte:</span>
+                            <span class="badge badge-warning">{{ total_alertes }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>À commander:</span>
+                            <span class="badge badge-primary">
+                                {% with total_a_commander=0 %}
+                                {% for item in produits_en_alerte %}
+                                {% if item.quantite_a_commander > 0 and not item.commande_active %}
+                                {% with total_a_commander=total_a_commander|add:1 %}{% endwith %}
+                                {% endif %}
+                                {% endfor %}
+                                {{ total_a_commander }} produits
+                                {% endwith %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Commandes en attente:</span>
+                            <span class="badge badge-warning">
+                                {% with total_attente=0 %}
+                                {% for item in produits_en_alerte %}
+                                {% if item.statut_commande == 'EN_ATTENTE' %}
+                                {% with total_attente=total_attente|add:1 %}{% endwith %}
+                                {% endif %}
+                                {% endfor %}
+                                {{ total_attente }} produits
+                                {% endwith %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Commandes validées:</span>
+                            <span class="badge badge-primary">
+                                {% with total_validees=0 %}
+                                {% for item in produits_en_alerte %}
+                                {% if item.statut_commande == 'VALIDEE' %}
+                                {% with total_validees=total_validees|add:1 %}{% endwith %}
+                                {% endif %}
+                                {% endfor %}
+                                {{ total_validees }} produits
+                                {% endwith %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Commandes en cours:</span>
+                            <span class="badge badge-info">
+                                {% with total_en_cours=0 %}
+                                {% for item in produits_en_alerte %}
+                                {% if item.statut_commande == 'EN_COURS' %}
+                                {% with total_en_cours=total_en_cours|add:1 %}{% endwith %}
+                                {% endif %}
+                                {% endfor %}
+                                {{ total_en_cours }} produits
+                                {% endwith %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-tachometer-alt"></i> Niveau d'alerte global</h5>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>{{ total_alertes }} produit(s)</strong> nécessitent une attention immédiate
+                        </div>
+                        <a href="{% url 'liste_stock' %}?alerte=oui" class="btn btn-warning btn-block">
+                            <i class="fas fa-filter"></i> Voir toutes les alertes dans le stock
+                        </a>
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Légende des statuts:</strong><br>
+                                • <span class="badge badge-warning">Jaune</span> = En attente<br>
+                                • <span class="badge badge-primary">Bleu</span> = Validée<br>
+                                • <span class="badge badge-info">Cyan</span> = En cours<br>
+                                • <span class="badge badge-success">Vert</span> = Reçue<br>
+                                • <span class="badge badge-danger">Rouge</span> = À commander
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {% else %}
         <div class="alert alert-success">
-            <i class="fas fa-check-circle"></i> Aucun produit ne nécessite de commande pour le moment.
+            <i class="fas fa-check-circle"></i> Aucun produit en alerte de stock. Tous les niveaux sont satisfaisants.
         </div>
         {% endif %}
     </div>
@@ -66,69 +282,150 @@
     <!-- Formulaire de commande manuelle -->
     <div class="section">
         <h2><i class="fas fa-edit"></i> Nouvelle commande manuelle</h2>
-        <div class="form-container">
-            <form method="post">
-                {% csrf_token %}
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="{{ form.produit.id_for_label }}">Produit </label>
-                        {{ form.produit }}
+        <div class="card">
+            <div class="card-body">
+                <form method="post" id="commandeForm">
+                    {% csrf_token %}
+
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="{{ form.produit.id_for_label }}" class="font-weight-bold">
+                                <i class="fas fa-box"></i> Produit
+                            </label>
+                            {{ form.produit }}
+                            {% if form.produit.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.produit.errors }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Sélectionnez le produit à commander
+                            </small>
+                        </div>
+
+                        <div class="form-group col-md-6">
+                            <label for="{{ form.quantite.id_for_label }}" class="font-weight-bold">
+                                <i class="fas fa-hashtag"></i> Quantité
+                            </label>
+                            {{ form.quantite }}
+                            {% if form.quantite.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.quantite.errors }}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Quantité à commander
+                            </small>
+                        </div>
                     </div>
-                    
+
                     <div class="form-group">
-                        <label for="{{ form.quantite.id_for_label }}">Quantité </label>
-                        {{ form.quantite }}
+                        <label for="{{ form.notes.id_for_label }}" class="font-weight-bold">
+                            <i class="fas fa-sticky-note"></i> Notes (optionnel)
+                        </label>
+                        {{ form.notes }}
+                        <small class="form-text text-muted">
+                            Informations supplémentaires sur cette commande
+                        </small>
                     </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.notes.id_for_label }}">Notes (optionnel)</label>
-                    {{ form.notes }}
-                </div>
-                
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-plus-circle"></i> Créer la commande
-                    </button>
-                </div>
-            </form>
+
+                    <div class="form-actions mt-4">
+                        <button type="submit" name="creer_commande" class="btn btn-primary btn-lg">
+                            <i class="fas fa-plus-circle"></i> Créer la commande
+                        </button>
+                        <button type="reset" class="btn btn-outline-secondary">
+                            <i class="fas fa-redo"></i> Réinitialiser
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
-    <!-- Commandes en attente -->
+    <!-- Commandes en attente de validation -->
+    {% if commandes_en_attente %}
     <div class="section">
-        <h2><i class="fas fa-clock"></i> Commandes en attente</h2>
-        
-        {% if commandes_attente %}
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2><i class="fas fa-clock"></i> Commandes en attente de validation</h2>
+            <span class="badge badge-warning badge-pill">{{ commandes_en_attente|length }}</span>
+        </div>
+
         <div class="table-responsive">
-            <table class="table">
-                <thead>
+            <table class="table table-striped table-hover">
+                <thead class="thead-dark">
                     <tr>
                         <th>Date</th>
-                        <th>Référence</th>
+                        <th>Numéro</th>
                         <th>Produit</th>
                         <th>Quantité</th>
                         <th>Notes</th>
-                        <th>Actions</th>
+                        <th>Créé par</th>
+                        <th>Statut</th>
+                        <th class="text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for commande in commandes_attente %}
-                    <tr>
-                        <td>{{ commande.date_creation|date:"d/m/Y" }}</td>
-                        <td>{{ commande.produit.reference }}</td>
-                        <td>{{ commande.produit.designation }}</td>
-                        <td>{{ commande.quantite }} {{ commande.produit.unite }}</td>
-                        <td>{{ commande.notes|default:"-" }}</td>
+                    {% for commande in commandes_en_attente %}
+                    <tr class="table-warning">
                         <td>
-                            <div class="btn-group">
-                                <a href="{% url 'valider_commande' commande.id %}" class="btn btn-sm btn-success">
-                                    <i class="fas fa-check"></i> Valider
-                                </a>
-                                <a href="#" class="btn btn-sm btn-danger">
-                                    <i class="fas fa-trash"></i>
-                                </a>
+                            <small>{{ commande.date_creation|date:"d/m/Y" }}</small><br>
+                            <small class="text-muted">{{ commande.date_creation|date:"H:i" }}</small>
+                        </td>
+                        <td>
+                            <strong>{{ commande.numero }}</strong>
+                        </td>
+                        <td>
+                            {{ commande.produit.designation }}<br>
+                            <small class="text-muted">{{ commande.produit.type.nom }}</small>
+                        </td>
+                        <td>
+                            <span class="badge badge-light p-2">
+                                {{ commande.quantite }} {{ commande.produit.unite }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if commande.notes %}
+                            <span class="text-truncate" style="max-width: 150px; display: inline-block;"
+                                  title="{{ commande.notes }}">
+                                {{ commande.notes|truncatechars:30 }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{{ commande.utilisateur.username|default:"-" }}</small>
+                        </td>
+                        <td>
+                            <span class="badge badge-warning">
+                                <i class="fas fa-clock"></i> {{ commande.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <!-- Formulaire pour valider la commande -->
+                                {% if commande.peut_etre_validee %}
+                                <form method="post" action="{% url 'valider_commande' commande.id %}"
+                                      class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-success"
+                                            onclick="return confirm('Êtes-vous sûr de vouloir valider cette commande ?');"
+                                            title="Valider la commande">
+                                        <i class="fas fa-check"></i> Valider
+                                    </button>
+                                </form>
+                                {% endif %}
+
+                                <!-- Formulaire pour annuler la commande -->
+                                <form method="post" action="{% url 'annuler_commande' commande.id %}"
+                                      class="d-inline ml-1">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger"
+                                            onclick="return confirm('Êtes-vous sûr de vouloir annuler cette commande ?');"
+                                            title="Annuler la commande">
+                                        <i class="fas fa-ban"></i> Annuler
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>
@@ -136,21 +433,487 @@
                 </tbody>
             </table>
         </div>
-        {% else %}
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle"></i> Aucune commande en attente.
-        </div>
-        {% endif %}
     </div>
+    {% endif %}
 
-    <!-- Actions -->
-    <div class="actions">
-        <a href="{% url 'liste_commande' %}" class="btn btn-secondary">
-            <i class="fas fa-list"></i> Voir toutes les commandes
-        </a>
-        <a href="{% url 'liste_stock' %}" class="btn btn-light">
-            <i class="fas fa-arrow-left"></i> Retour au stock
-        </a>
+    <!-- Commandes validées -->
+    {% if commandes_validees %}
+    <div class="section">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2><i class="fas fa-check-circle"></i> Commandes validées</h2>
+            <span class="badge badge-primary badge-pill">{{ commandes_validees|length }}</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>Date validation</th>
+                        <th>Numéro</th>
+                        <th>Produit</th>
+                        <th>Quantité</th>
+                        <th>Notes</th>
+                        <th>Validée par</th>
+                        <th>Statut</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                   {% for commande in commandes_validees %}
+                    <tr class="table-primary">
+                        <td>
+                            <small>{{ commande.date_validation|date:"d/m/Y" }}</small><br>
+                            <small class="text-muted">{{ commande.date_validation|date:"H:i" }}</small>
+                        </td>
+                        <td>
+                            <strong>{{ commande.numero }}</strong>
+                        </td>
+                        <td>
+                            {{ commande.produit.designation }}<br>
+                            <small class="text-muted">{{ commande.produit.type.nom }}</small>
+                        </td>
+                        <td>
+                            <span class="badge badge-light p-2">
+                                {{ commande.quantite }} {{ commande.produit.unite }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if commande.notes %}
+                            <span class="text-truncate" style="max-width: 150px; display: inline-block;"
+                                  title="{{ commande.notes }}">
+                                {{ commande.notes|truncatechars:30 }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{{ commande.utilisateur_validation.username|default:"-" }}</small>
+                        </td>
+                        <td>
+                            <span class="badge badge-primary">
+                                <i class="fas fa-check-circle"></i> {{ commande.get_status_display }}
+                            </span>
+                            {% if commande.en_retard %}
+                            <span class="badge badge-danger ml-1">
+                                <i class="fas fa-exclamation-triangle"></i> Retard
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <!-- Formulaire pour mettre en cours -->
+                                <form method="post" action="{% url 'mettre_en_cours_commande' commande.id %}"
+                                      class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-info"
+                                            onclick="return confirm('Marquer cette commande comme en cours de livraison ?');"
+                                            title="Mettre en cours">
+                                        <i class="fas fa-truck"></i> En cours
+                                    </button>
+                                </form>
+
+                                <!-- Formulaire pour annuler la commande -->
+                                <form method="post" action="{% url 'annuler_commande' commande.id %}"
+                                      class="d-inline ml-1">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger"
+                                            onclick="return confirm('Êtes-vous sûr de vouloir annuler cette commande ?');"
+                                            title="Annuler la commande">
+                                        <i class="fas fa-ban"></i> Annuler
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Commandes en cours de livraison -->
+    {% if commandes_en_cours %}
+    <div class="section">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2><i class="fas fa-truck"></i> Commandes en cours de livraison</h2>
+            <span class="badge badge-info badge-pill">{{ commandes_en_cours|length }}</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>Date mise en cours</th>
+                        <th>Numéro</th>
+                        <th>Produit</th>
+                        <th>Quantité</th>
+                        <th>Notes</th>
+                        <th>Statut</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                   {% for commande in commandes_en_cours %}
+                    <tr class="table-info">
+                        <td>
+                            <small>{{ commande.date_en_cours|date:"d/m/Y" }}</small><br>
+                            <small class="text-muted">{{ commande.date_en_cours|date:"H:i" }}</small>
+                        </td>
+                        <td>
+                            <strong>{{ commande.numero }}</strong>
+                        </td>
+                        <td>
+                            {{ commande.produit.designation }}<br>
+                            <small class="text-muted">{{ commande.produit.type.nom }}</small>
+                        </td>
+                        <td>
+                            <span class="badge badge-light p-2">
+                                {{ commande.quantite }} {{ commande.produit.unite }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if commande.notes %}
+                            <span class="text-truncate" style="max-width: 150px; display: inline-block;"
+                                  title="{{ commande.notes }}">
+                                {{ commande.notes|truncatechars:30 }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge badge-info">
+                                <i class="fas fa-truck"></i> {{ commande.get_status_display }}
+                            </span>
+                            {% if commande.en_retard %}
+                            <span class="badge badge-danger ml-1">
+                                <i class="fas fa-exclamation-triangle"></i> Retard
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <!-- Formulaire pour recevoir la commande -->
+                                <form method="post" action="{% url 'recevoir_commande' commande.id %}"
+                                      class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-success"
+                                            onclick="return confirm('Recevoir cette commande ? Le stock sera mis à jour.');"
+                                            title="Recevoir la commande">
+                                        <i class="fas fa-check-double"></i> Recevoir
+                                    </button>
+                                </form>
+
+                                <!-- Formulaire pour annuler la commande -->
+                                <form method="post" action="{% url 'annuler_commande' commande.id %}"
+                                      class="d-inline ml-1">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger"
+                                            onclick="return confirm('Êtes-vous sûr de vouloir annuler cette commande ?');"
+                                            title="Annuler la commande">
+                                        <i class="fas fa-ban"></i> Annuler
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Commandes récemment reçues -->
+    {% if commandes_recues %}
+    <div class="section">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2><i class="fas fa-check-double"></i> Commandes récemment reçues</h2>
+            <span class="badge badge-success badge-pill">{{ commandes_recues|length }}</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>Date réception</th>
+                        <th>Numéro</th>
+                        <th>Produit</th>
+                        <th>Quantité</th>
+                        <th>Notes</th>
+                        <th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody>
+                   {% for commande in commandes_recues %}
+                    <tr class="table-success">
+                        <td>
+                            <small>{{ commande.date_reception|date:"d/m/Y" }}</small><br>
+                            <small class="text-muted">{{ commande.date_reception|date:"H:i" }}</small>
+                        </td>
+                        <td>
+                            <strong>{{ commande.numero }}</strong>
+                        </td>
+                        <td>
+                            {{ commande.produit.designation }}<br>
+                            <small class="text-muted">{{ commande.produit.type.nom }}</small>
+                        </td>
+                        <td>
+                            <span class="badge badge-light p-2">
+                                {{ commande.quantite }} {{ commande.produit.unite }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if commande.notes %}
+                            <span class="text-truncate" style="max-width: 150px; display: inline-block;"
+                                  title="{{ commande.notes }}">
+                                {{ commande.notes|truncatechars:30 }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge badge-success">
+                                <i class="fas fa-check-double"></i> {{ commande.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Actions supplémentaires -->
+    <div class="section">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="fas fa-tasks"></i> Actions rapides</h5>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <a href="{% url 'liste_stock' %}" class="btn btn-outline-primary btn-block">
+                            <i class="fas fa-arrow-left"></i> Retour au stock
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{% url 'mouvement' %}" class="btn btn-outline-success btn-block">
+                            <i class="fas fa-exchange-alt"></i> Gérer les mouvements
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-block">
+                            <i class="fas fa-tachometer-alt"></i> Tableau de bord
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{% url 'liste_commande' %}" class="btn btn-outline-info btn-block">
+                            <i class="fas fa-history"></i> Historique complet
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-hide messages after 5 seconds
+    setTimeout(function() {
+        var alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function(alert) {
+            var bootstrapAlert = new bootstrap.Alert(alert);
+            bootstrapAlert.close();
+        });
+    }, 5000);
+
+    // Confirmation avant soumission
+    const commandeForm = document.getElementById('commandeForm');
+    if (commandeForm) {
+        commandeForm.addEventListener('submit', function(e) {
+            const quantite = document.getElementById('id_quantite').value;
+            const produit = document.getElementById('id_produit').value;
+
+            if (!produit) {
+                e.preventDefault();
+                alert('Veuillez sélectionner un produit.');
+                return false;
+            }
+
+            if (!quantite || quantite <= 0) {
+                e.preventDefault();
+                alert('Veuillez entrer une quantité valide (supérieure à 0).');
+                return false;
+            }
+            return true;
+        });
+    }
+
+    // Amélioration des sélecteurs
+    const produitSelect = document.getElementById('id_produit');
+    if (produitSelect) {
+        // Ajouter une recherche pour les produits
+        produitSelect.classList.add('form-control');
+    }
+
+    // Rafraîchissement automatique toutes les 60 secondes (optionnel)
+    setTimeout(function() {
+        location.reload();
+    }, 60000);
+});
+
+// Fonction pour mettre à jour une ligne spécifique
+function refreshProductRow(productId) {
+    // Cette fonction pourrait appeler une API pour mettre à jour
+    // les données d'un produit spécifique
+    console.log('Mise à jour du produit:', productId);
+}
+</script>
+
+<style>
+.commande-page .section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.badge-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.badge-primary {
+    background-color: #007bff;
+    color: white;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.badge-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.badge-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.progress {
+    background-color: #e9ecef;
+    border-radius: 0.25rem;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0,0,0,.075);
+}
+
+.btn-group .btn {
+    margin-right: 2px;
+}
+
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.card {
+    border: 1px solid rgba(0,0,0,.125);
+    border-radius: 0.25rem;
+}
+
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.badge-pill {
+    padding-right: 0.6em;
+    padding-left: 0.6em;
+    border-radius: 10rem;
+}
+
+/* Styles pour les lignes du tableau selon le statut */
+.table-success {
+    background-color: #d4edda !important;
+}
+
+.table-primary {
+    background-color: #d1ecf1 !important;
+}
+
+.table-info {
+    background-color: #d1ecf1 !important;
+}
+
+.table-warning {
+    background-color: #fff3cd !important;
+}
+
+.table-danger {
+    background-color: #f8d7da !important;
+}
+
+.table-success:hover {
+    background-color: #c3e6cb !important;
+}
+
+.table-warning:hover {
+    background-color: #ffeaa7 !important;
+}
+
+.table-info:hover {
+    background-color: #bee5eb !important;
+}
+
+.table-primary:hover {
+    background-color: #bee5eb !important;
+}
+
+.table-danger:hover {
+    background-color: #f5c6cb !important;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    border-radius: 0.2rem;
+}
+
+.btn-group-vertical .btn {
+    margin-bottom: 0.2rem;
+}
+
+/* Responsive table */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+
+    .btn-group .btn {
+        padding: 0.2rem 0.4rem;
+        margin-bottom: 0.2rem;
+    }
+
+    .commande-page .section {
+        padding: 1rem;
+    }
+}
+</style>
 {% endblock %}

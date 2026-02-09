@@ -560,3 +560,74 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+/* Logo dans l'en-tête */
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.logo-image {
+    display: flex;
+    align-items: center;
+}
+
+.logo-img {
+    height: 50px;  /* Ajustez la taille selon vos besoins */
+    width: auto;
+    max-width: 150px;  /* Largeur maximale */
+    object-fit: contain;
+}
+
+.logo-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.logo-text h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.logo-text .subtitle {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    font-style: italic;
+}
+
+/* Responsive design pour le logo */
+@media (max-width: 768px) {
+    .logo {
+        gap: 10px;
+    }
+
+    .logo-img {
+        height: 40px;
+        max-width: 120px;
+    }
+
+    .logo-text h1 {
+        font-size: 1.2rem;
+    }
+
+    .logo-text .subtitle {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .logo {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
+    .logo-image {
+        margin-bottom: 5px;
+    }
+}

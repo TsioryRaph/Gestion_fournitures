@@ -1,74 +1,436 @@
 {% extends 'fournitures/base.html' %}
 
+{% block title %}{% if form.instance.pk %}Modifier{% else %}Ajouter{% endif %} une fourniture{% endblock %}
+
 {% block content %}
-<h2>Ajouter une nouvelle fourniture</h2>
+<div class="mouvement-page">
+    <div class="page-header">
+        <h1>
+            <i class="fas fa-plus-circle"></i>
+            {% if form.instance.pk %}
+                Modifier la fourniture {{ form.instance.reference }}
+            {% else %}
+                Ajouter une nouvelle fourniture
+            {% endif %}
+        </h1>
+        <p>
+            {% if form.instance.pk %}
+                Modifier les informations de cette fourniture
+            {% else %}
+                Créer une nouvelle référence de fourniture dans le système
+            {% endif %}
+        </p>
+    </div>
 
-<div style="max-width: 600px; margin: 0 auto;">
-    <form method="post">
-        {% csrf_token %}
-
-        <div class="form-group">
-            <label>Type:</label>
-            {{ form.type }}
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
-        <div class="form-group">
-            <label>Référence (ex: F001):</label>
-            {{ form.reference }}
-        </div>
+    <div class="form-container">
+        <form method="post" class="mouvement-form" id="fourniture-form">
+            {% csrf_token %}
 
-        <div class="form-group">
-            <label>Désignation:</label>
-            {{ form.designation }}
-        </div>
+            <!-- Messages d'erreur généraux -->
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                <p class="mb-0">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
 
-        <div class="form-group">
-            <label>Unité:</label>
-            {{ form.unite }}
-        </div>
+            <!-- Référence pour les modifications -->
+            {% if form.instance.pk %}
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="{{ form.reference.id_for_label }}">Référence</label>
+                    {{ form.reference }}
+                    <small class="form-text">Référence générée automatiquement</small>
+                </div>
+                <div class="form-group">
+                    <label for="{{ form.actif.id_for_label }}">Statut</label>
+                    <div class="form-check form-switch mt-2">
+                        {{ form.actif }}
+                        <label class="form-check-label" for="{{ form.actif.id_for_label }}">
+                            {{ form.actif.label }}
+                        </label>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <!-- Message pour nouvelle création -->
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                La référence sera générée automatiquement après enregistrement (format F001, F002, ...)
+            </div>
+            {% endif %}
 
-        <div class="form-group">
-            <label>Stock initial:</label>
-            {{ form.stock }}
-        </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="{{ form.type.id_for_label }}">Type de fourniture </label>
+                    {{ form.type }}
+                    {% if form.type.errors %}
+                    <div class="error">{{ form.type.errors }}</div>
+                    {% endif %}
+                    {% if not form.instance.pk %}
+                    {% endif %}
+                </div>
 
-        <div class="form-group">
-            <label>Stock maximum:</label>
-            {{ form.stock_max }}
-        </div>
+                <div class="form-group">
+                    <label for="{{ form.designation.id_for_label }}">Désignation </label>
+                    {{ form.designation }}
+                    {% if form.designation.errors %}
+                    <div class="error">{{ form.designation.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
 
-        <div class="form-group">
-            <label>Seuil d'alerte:</label>
-            {{ form.seuil_alerte }}
-        </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="{{ form.unite.id_for_label }}">Unité de mesure </label>
+                    {{ form.unite }}
+                    {% if form.unite.errors %}
+                    <div class="error">{{ form.unite.errors }}</div>
+                    {% endif %}
+                </div>
 
-        <div style="margin-top: 30px;">
-            <button type="submit" class="btn btn-primary" style="padding: 12px 30px; font-size: 16px;">
-                💾 Enregistrer la fourniture
-            </button>
-            <a href="{% url 'liste_stock' %}" class="btn" style="background: #6c757d; color: white; padding: 12px 30px; text-decoration: none;">
-                Annuler
-            </a>
+                <div class="form-group">
+                    <label for="{{ form.stock.id_for_label }}">Stock initial</label>
+                    {{ form.stock }}
+                    {% if form.stock.errors %}
+                    <div class="error">{{ form.stock.errors }}</div>
+                    {% endif %}
+                    <small class="form-text">Quantité disponible actuellement</small>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="{{ form.stock_max.id_for_label }}">Stock maximum *</label>
+                    {{ form.stock_max }}
+                    {% if form.stock_max.errors %}
+                    <div class="error">{{ form.stock_max.errors }}</div>
+                    {% endif %}
+                    <small class="form-text">Limite de stockage</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.seuil_alerte.id_for_label }}">Seuil d'alerte *</label>
+                    {{ form.seuil_alerte }}
+                    {% if form.seuil_alerte.errors %}
+                    <div class="error">{{ form.seuil_alerte.errors }}</div>
+                    {% endif %}
+                    <small class="form-text">Alarme de réapprovisionnement</small>
+                </div>
+            </div>
+
+            <!-- Option pour générer automatiquement la référence (uniquement pour nouvelle création) -->
+            {% if not form.instance.pk %}
+            <div class="form-row">
+                <div class="form-group">
+                    <div class="form-check">
+                        {{ form.generer_reference_auto }}
+                        <label class="form-check-label" for="{{ form.generer_reference_auto.id_for_label }}">
+                            {{ form.generer_reference_auto.label }}
+                        </label>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="fas fa-save"></i>
+                    {% if form.instance.pk %}
+                        Mettre à jour
+                    {% else %}
+                        Enregistrer la fourniture
+                    {% endif %}
+                </button>
+                <a href="{% url 'liste_stock' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Annuler
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Aide pour les seuils -->
+    <div class="product-info">
+        <h3><i class="fas fa-lightbulb"></i> Conseils de configuration</h3>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Référence :</span>
+                <span class="info-value">
+                    {% if form.instance.pk %}
+                        {{ form.instance.reference }} (générée automatiquement)
+                    {% else %}
+                        Générée automatiquement (F001, F002, ...)
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Seuil d'alerte suggéré :</span>
+                <span class="info-value" id="auto-seuil">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Recommandation :</span>
+                <span class="info-value">Le seuil d'alerte est généralement fixé à 50% du stock maximum</span>
+            </div>
         </div>
-    </form>
+    </div>
 </div>
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    const stockMaxInput = document.getElementById("id_stock_max");
-    const seuilAlerteInput = document.getElementById("id_seuil_alerte");
 
-    if (stockMaxInput && seuilAlerteInput) {
-        stockMaxInput.addEventListener("input", function () {
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const stockMaxInput = document.getElementById('id_stock_max');
+    const seuilAlerteInput = document.getElementById('id_seuil_alerte');
+    const autoSeuilSpan = document.getElementById('auto-seuil');
+    const genererRefCheckbox = document.getElementById('id_generer_reference_auto');
+
+    function updateSeuilAlerte() {
+        if (stockMaxInput && seuilAlerteInput) {
             const stockMax = parseInt(stockMaxInput.value);
 
             if (!isNaN(stockMax) && stockMax > 0) {
-                seuilAlerteInput.value = Math.floor(stockMax / 2);
+                const seuilCalcule = Math.floor(stockMax / 2);
+
+                // Mettre à jour l'affichage
+                autoSeuilSpan.textContent = seuilCalcule + ' (50% du stock max)';
+
+                // Mettre à jour le champ si vide ou si l'utilisateur n'a pas modifié
+                // On vérifie si le champ est vide ou égal à la valeur par défaut
+                if (seuilAlerteInput.value === '' ||
+                    parseInt(seuilAlerteInput.value) === 5) { // 5 est la valeur par défaut
+                    seuilAlerteInput.value = seuilCalcule;
+                }
+            } else {
+                autoSeuilSpan.textContent = '-';
+            }
+        }
+    }
+
+    function validateStockMax() {
+        if (stockMaxInput) {
+            const stockMax = parseInt(stockMaxInput.value);
+            const stockInput = document.getElementById('id_stock');
+
+            if (!isNaN(stockMax) && stockInput) {
+                const stock = parseInt(stockInput.value);
+                if (!isNaN(stock) && stock > stockMax) {
+                    alert('⚠️ Attention : Le stock initial dépasse le stock maximum. Veuillez ajuster.');
+                    stockInput.focus();
+                }
+            }
+        }
+    }
+
+    function validateSeuilAlerte() {
+        if (seuilAlerteInput && stockMaxInput) {
+            const seuil = parseInt(seuilAlerteInput.value);
+            const stockMax = parseInt(stockMaxInput.value);
+
+            if (!isNaN(seuil) && !isNaN(stockMax) && seuil >= stockMax) {
+                alert('⚠️ Attention : Le seuil d\'alerte doit être inférieur au stock maximum.');
+                seuilAlerteInput.focus();
+            }
+        }
+    }
+
+    // Écouter les changements
+    if (stockMaxInput) {
+        stockMaxInput.addEventListener('input', updateSeuilAlerte);
+        stockMaxInput.addEventListener('change', function() {
+            updateSeuilAlerte();
+            validateStockMax();
+        });
+    }
+
+    if (seuilAlerteInput) {
+        seuilAlerteInput.addEventListener('change', validateSeuilAlerte);
+    }
+
+    if (genererRefCheckbox) {
+        genererRefCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                document.querySelector('.alert-info').style.display = 'block';
+            } else {
+                document.querySelector('.alert-info').style.display = 'none';
+                alert('⚠️ Si vous désactivez la génération automatique, vous devrez saisir manuellement une référence unique.');
             }
         });
     }
+
+    // Validation du formulaire avant soumission
+    const form = document.getElementById('fourniture-form');
+    if (form) {
+        form.addEventListener('submit', function(event) {
+            let hasError = false;
+
+            // Validation basique
+            const requiredFields = form.querySelectorAll('[required]');
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    field.classList.add('is-invalid');
+                    hasError = true;
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+
+            if (hasError) {
+                event.preventDefault();
+                alert('⚠️ Veuillez remplir tous les champs obligatoires (marqués d\'un *).');
+            }
+        });
+    }
+
+    // Mettre à jour au chargement
+    updateSeuilAlerte();
 });
+
+// Fonction pour ajouter un nouveau type via AJAX
+function addNewType() {
+    const form = document.getElementById('add-type-form');
+    const nomInput = document.getElementById('type_nom');
+    const typeSelect = document.getElementById('id_type');
+
+    if (!nomInput.value.trim()) {
+        alert('⚠️ Veuillez saisir un nom pour le type.');
+        nomInput.focus();
+        return;
+    }
+
+    // Envoyer la requête AJAX
+    fetch(form.action, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams(new FormData(form))
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Ajouter la nouvelle option au select
+            const newOption = new Option(data.nom, data.id);
+            typeSelect.add(newOption);
+            typeSelect.value = data.id;
+
+            // Fermer le modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addTypeModal'));
+            modal.hide();
+
+            // Réinitialiser le formulaire
+            form.reset();
+        } else {
+            alert('❌ Erreur : ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('❌ Une erreur est survenue lors de l\'ajout du type.');
+    });
+}
+
+// Initialiser Bootstrap modal si disponible
+if (typeof bootstrap !== 'undefined') {
+    var addTypeModal = new bootstrap.Modal(document.getElementById('addTypeModal'), {
+        keyboard: false
+    });
+}
 </script>
+
+<style>
+.full-width {
+    flex: 1 1 100%;
+}
+
+.product-info {
+    background-color: #f8f9fa;
+    border-left: 4px solid #17a2b8;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 30px;
+}
+
+.product-info h3 {
+    color: #17a2b8;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.info-value {
+    color: #212529;
+    font-size: 1rem;
+}
+
+.messages-container {
+    margin-bottom: 20px;
+}
+
+.form-check.form-switch {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-check-input {
+    width: 3em;
+    height: 1.5em;
+}
+
+.is-invalid {
+    border-color: #dc3545 !important;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .form-row {
+        flex-direction: column;
+    }
+
+    .form-group {
+        width: 100%;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 {% endblock %}
-EOF
-
-

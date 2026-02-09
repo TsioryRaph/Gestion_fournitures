@@ -2,188 +2,533 @@
 {% load static %}
 
 {% block content %}
-<h2><i class="fas fa-chart-bar"></i> Statistiques</h2>
+<h2><i class="fas fa-chart-bar"></i> Statistiques Détaillées</h2>
 
 <!-- Section des KPI -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0;">
-    <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;">
-        <h3 style="color: #3498db; font-size: 2.5rem; margin: 10px 0;">{{ total_fournitures }}</h3>
-        <p style="color: #7f8c8d; font-size: 1.1rem;">Fournitures totales</p>
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <h3>{{ total_fournitures }}</h3>
+        <p>Fournitures totales</p>
     </div>
 
-    <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;">
-        <h3 style="color: #2ecc71; font-size: 2.5rem; margin: 10px 0;">{{ valeur_stock }}</h3>
-        <p style="color: #7f8c8d; font-size: 1.1rem;">Valeur totale du stock</p>
+    <div class="kpi-card">
+        <h3>{{ valeur_stock }}</h3>
+        <p>Valeur totale du stock</p>
     </div>
 
-    <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;">
-        <h3 style="color: #e74c3c; font-size: 2.5rem; margin: 10px 0;">{{ produits_en_alerte }}</h3>
-        <p style="color: #7f8c8d; font-size: 1.1rem;">Produits en alerte</p>
+    <div class="kpi-card kpi-alert">
+        <h3>{{ produits_en_alerte }}</h3>
+        <p>Produits en alerte</p>
     </div>
 
-    <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;">
-        <h3 style="color: #f39c12; font-size: 2.5rem; margin: 10px 0;">{{ total_mouvements }}</h3>
-        <p style="color: #7f8c8d; font-size: 1.1rem;">Mouvements (30j)</p>
+    <div class="kpi-card">
+        <h3>{{ total_mouvements }}</h3>
+        <p>Mouvements (30j)</p>
+    </div>
+</div>
+
+<!-- ===== SECTION GRAPHIQUES ===== -->
+<div class="section">
+    <h3><i class="fas fa-chart-pie"></i> Visualisations Graphiques</h3>
+
+    <div class="charts-grid">
+        <!-- Graphique 1 : Distribution par type -->
+        <div class="chart-container">
+            <h4><i class="fas fa-chart-pie"></i> Distribution par type</h4>
+            <div id="chart-distribution"></div>
+            <div class="chart-info">
+                <small>{{ total_fournitures }} produits dans {{ types|length }} catégories</small>
+            </div>
+        </div>
+
+        <!-- Graphique 2 : Mouvements des 30 derniers jours -->
+        <div class="chart-container">
+            <h4><i class="fas fa-chart-line"></i> Activité (30 derniers jours)</h4>
+            <div id="chart-activite"></div>
+            <div class="chart-info">
+                <small>Moyenne: {{ activite_moyenne_jour }} mouvements/jour</small>
+            </div>
+        </div>
+
+        <!-- Graphique 3 : Ratio Entrées/Sorties -->
+        <div class="chart-container">
+            <h4><i class="fas fa-balance-scale"></i> Entrées vs Sorties</h4>
+            <div id="chart-entrees-sorties"></div>
+            <div class="chart-info">
+                <small>Ratio: {{ ratio_entrees_sorties }}</small>
+            </div>
+        </div>
+
+        <!-- Graphique 4 : Top 5 produits -->
+        <div class="chart-container">
+            <h4><i class="fas fa-trophy"></i> Top 5 produits utilisés</h4>
+            <div id="chart-top-produits"></div>
+            <div class="chart-info">
+                <small>Sur les 30 derniers jours</small>
+            </div>
+        </div>
     </div>
 </div>
 
 <!-- Tableau des produits en alerte -->
-<div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin: 30px 0;">
-    <h3 style="color: #2c3e50; margin-bottom: 20px;">
-        <i class="fas fa-exclamation-triangle" style="color: #e74c3c;"></i> Produits en alerte de stock
-    </h3>
+<div class="section">
+    <h3><i class="fas fa-exclamation-triangle text-danger"></i> Produits en alerte de stock</h3>
     {% if produits_bas_stock %}
-    <table style="width: 100%; border-collapse: collapse;">
-        <thead style="background: #f8f9fa;">
-            <tr>
-                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Produit</th>
-                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Type</th>
-                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Stock actuel</th>
-                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Seuil d'alerte</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for produit in produits_bas_stock %}
-            <tr style="border-bottom: 1px solid #dee2e6;">
-                <td style="padding: 12px;">{{ produit.designation }}</td>
-                <td style="padding: 12px;">{{ produit.type.nom }}</td>
-                <td style="padding: 12px; font-weight: bold; color: #e74c3c;">
-                    {{ produit.stock }}
-                </td>
-                <td style="padding: 12px;">{{ produit.seuil_alerte }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="table-data">
+            <thead>
+                <tr>
+                    <th>Produit</th>
+                    <th>Type</th>
+                    <th>Stock actuel</th>
+                    <th>Seuil d'alerte</th>
+                    <th>État</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for produit in produits_bas_stock %}
+                <tr>
+                    <td>{{ produit.designation }}</td>
+                    <td><span class="badge-type">{{ produit.type.nom }}</span></td>
+                    <td class="text-danger bold">{{ produit.stock }}</td>
+                    <td>{{ produit.seuil_alerte }}</td>
+                    <td>
+                        <div class="progress-bar-small">
+                            <div class="progress-fill" style="width: {% widthratio produit.stock produit.seuil_alerte 100 %}%"></div>
+                        </div>
+                        <small>{% widthratio produit.stock produit.seuil_alerte 100 %}% du seuil</small>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% else %}
-    <div style="background: #d1e7dd; padding: 20px; border-radius: 5px; color: #0f5132; text-align: center;">
-        <i class="fas fa-check-circle" style="margin-right: 8px;"></i>
-        ✅ Tous les stocks sont au-dessus du seuil d'alerte
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i> ✅ Tous les stocks sont au-dessus du seuil d'alerte
     </div>
     {% endif %}
 </div>
 
 <!-- Top des produits utilisés -->
-<div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin: 30px 0;">
-    <h3 style="color: #2c3e50; margin-bottom: 20px;">
-        <i class="fas fa-trophy"></i> Top des produits les plus utilisés
-    </h3>
+<div class="section">
+    <h3><i class="fas fa-trophy"></i> Top des produits les plus utilisés</h3>
     {% if top_sorties %}
-    <table style="width: 100%; border-collapse: collapse;">
-        <thead style="background: #f8f9fa;">
-            <tr>
-                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Produit</th>
-                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Type</th>
-                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Sorties totales</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in top_sorties %}
-            <tr style="border-bottom: 1px solid #dee2e6;">
-                <td style="padding: 12px;">{{ item.produit__designation }}</td>
-                <td style="padding: 12px;">{{ item.produit__type__nom }}</td>
-                <td style="padding: 12px; font-weight: bold; color: #e74c3c;">
-                    {{ item.total }} unités
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="table-data">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Produit</th>
+                    <th>Type</th>
+                    <th>Sorties totales</th>
+                    <th>Moyenne/jour</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in top_sorties %}
+                <tr>
+                    <td class="text-center">{{ forloop.counter }}</td>
+                    <td>{{ item.produit__designation }}</td>
+                    <td><span class="badge-type">{{ item.produit__type__nom }}</span></td>
+                    <td class="bold">{{ item.total }} unités</td>
+                    <td>{{ item.moyenne_jour|default:"0" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
     {% else %}
-    <div style="background: #d1ecf1; padding: 20px; border-radius: 5px; color: #0c5460; text-align: center;">
-        <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
-        ℹ️ Aucune donnée disponible
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> ℹ️ Aucune donnée disponible
     </div>
     {% endif %}
 </div>
 
-<!-- Distribution par type (version simple) -->
-<div style="background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin: 30px 0;">
-    <h3 style="color: #2c3e50; margin-bottom: 20px;">
-        <i class="fas fa-chart-pie"></i> Distribution par type
-    </h3>
+<!-- Distribution par type (tableau détaillé) -->
+<div class="section">
+    <h3><i class="fas fa-list"></i> Détail par type</h3>
     {% if types %}
-    <table style="width: 100%; border-collapse: collapse;">
-        <thead style="background: #f8f9fa;">
-            <tr>
-                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Type de fourniture</th>
-                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Nombre de produits</th>
-                <th style="padding: 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Pourcentage</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for type in types %}
-            <tr style="border-bottom: 1px solid #dee2e6;">
-                <td style="padding: 12px;">{{ type.nom }}</td>
-                <td style="padding: 12px; font-weight: bold;">{{ type.count }}</td>
-                <td style="padding: 12px;">
-                    {% widthratio type.count total_fournitures 100 as pourcentage %}
-                    {{ pourcentage }}%
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <div style="margin-top: 20px; font-size: 0.9rem; color: #7f8c8d;">
+    <div class="table-responsive">
+        <table class="table-data">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Nombre</th>
+                    <th>Pourcentage</th>
+                    <th>En alerte</th>
+                    <th>Stock total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for type in types %}
+                <tr>
+                    <td>{{ type.nom }}</td>
+                    <td class="bold">{{ type.count }}</td>
+                    <td>
+                        <div class="progress-bar-small">
+                            <div class="progress-fill" style="width: {% widthratio type.count total_fournitures 100 %}%"></div>
+                        </div>
+                        {% widthratio type.count total_fournitures 100 %}%
+                    </td>
+                    <td>
+                        {% with alert_count=type.alerte_count|default:0 %}
+                        {% if alert_count > 0 %}
+                        <span class="badge badge-danger">{{ alert_count }}</span>
+                        {% else %}
+                        <span class="badge badge-success">0</span>
+                        {% endif %}
+                        {% endwith %}
+                    </td>
+                    <td>{{ type.stock_total|default:0 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="text-muted">
         Total: {{ total_fournitures }} produits répartis en {{ types|length }} catégories
     </div>
     {% else %}
-    <div style="background: #d1ecf1; padding: 20px; border-radius: 5px; color: #0c5460; text-align: center;">
-        <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
-        ℹ️ Aucune donnée disponible
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> ℹ️ Aucune donnée disponible
     </div>
     {% endif %}
 </div>
 
 <!-- Section Résumé -->
-<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; margin-top: 40px;">
-    <h3 style="color: white; margin-bottom: 20px;">
-        <i class="fas fa-chart-line"></i> Résumé des performances
-    </h3>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
-        <div>
-            <h4 style="font-size: 1.2rem; margin-bottom: 10px;">📦 Stock</h4>
-            <p>• Total des fournitures : <strong>{{ total_fournitures }}</strong></p>
-            <p>• Valeur du stock : <strong>{{ valeur_stock }}</strong> unités</p>
-            <p>• Produits en alerte : <strong>{{ produits_en_alerte }}</strong></p>
+<div class="section summary-section">
+    <h3><i class="fas fa-chart-line"></i> Résumé des performances</h3>
+    <div class="summary-grid">
+        <div class="summary-card">
+            <h4><i class="fas fa-box"></i> Stock</h4>
+            <p><strong>Total des fournitures:</strong> {{ total_fournitures }}</p>
+            <p><strong>Valeur du stock:</strong> {{ valeur_stock }} unités</p>
+            <p><strong>Produits en alerte:</strong> {{ produits_en_alerte }}</p>
+            <p><strong>Taux d'alerte:</strong> {{ taux_alerte }}%</p>
         </div>
-        <div>
-            <h4 style="font-size: 1.2rem; margin-bottom: 10px;">📊 Mouvements</h4>
-            <p>• Mouvements (30j) : <strong>{{ total_mouvements }}</strong></p>
-            <p>• Entrées : <strong>{{ total_entrees }}</strong></p>
-            <p>• Sorties : <strong>{{ total_sorties }}</strong></p>
+        <div class="summary-card">
+            <h4><i class="fas fa-exchange-alt"></i> Mouvements</h4>
+            <p><strong>Mouvements (30j):</strong> {{ total_mouvements }}</p>
+            <p><strong>Entrées:</strong> {{ total_entrees }}</p>
+            <p><strong>Sorties:</strong> {{ total_sorties }}</p>
+            <p><strong>Activité/jour:</strong> {{ activite_moyenne_jour }}</p>
         </div>
-        <div>
-            <h4 style="font-size: 1.2rem; margin-bottom: 10px;">📈 Tendance</h4>
-            <p>• Ratio entrées/sorties : <strong>{{ ratio_entrees_sorties }}</strong></p>
-            <p>• Activité moyenne/jour : <strong>{{ activite_moyenne_jour }}</strong></p>
-            <p>• Taux d'alerte : <strong>{{ taux_alerte }}%</strong></p>
+        <div class="summary-card">
+            <h4><i class="fas fa-trend-up"></i> Tendance</h4>
+            <p><strong>Ratio E/S:</strong> {{ ratio_entrees_sorties }}</p>
+            <p><strong>Dernière activité:</strong> {{ derniere_activite|default:"Aucune" }}</p>
+            <p><strong>Période analysée:</strong> 30 jours</p>
+            <p><strong>Date de mise à jour:</strong> {% now "d/m/Y H:i" %}</p>
         </div>
     </div>
 </div>
 
+<!-- APEXCHARTS -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    // === GRAPHIQUE 1 : Distribution par type (camembert) ===
+    var optionsDistribution = {
+        series: {{ series_type|safe }},
+        chart: {
+            type: 'pie',
+            height: 300,
+        },
+        labels: {{ labels_type|safe }},
+        colors: ['#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c', '#d35400', '#34495e'],
+        responsive: [{
+            breakpoint: 480,
+            options: {
+                chart: {
+                    width: 200
+                },
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }],
+        tooltip: {
+            y: {
+                formatter: function(val) {
+                    return val + " produits"
+                }
+            }
+        }
+    };
+    var chartDistribution = new ApexCharts(document.querySelector("#chart-distribution"), optionsDistribution);
+    chartDistribution.render();
+
+    // === GRAPHIQUE 2 : Activité des 30 derniers jours ===
+    var optionsActivite = {
+        series: [{
+            name: 'Mouvements',
+            data: {{ activite_data|safe }}
+        }],
+        chart: {
+            type: 'area',
+            height: 300,
+            zoom: {
+                enabled: false
+            }
+        },
+        dataLabels: {
+            enabled: false
+        },
+        stroke: {
+            curve: 'smooth',
+            width: 3,
+        },
+        fill: {
+            type: 'gradient',
+            gradient: {
+                shadeIntensity: 1,
+                opacityFrom: 0.7,
+                opacityTo: 0.2,
+            }
+        },
+        colors: ['#3498db'],
+        xaxis: {
+            categories: {{ activite_dates|safe }},
+            labels: {
+                rotate: -45,
+                style: {
+                    fontSize: '10px'
+                }
+            }
+        },
+        yaxis: {
+            title: {
+                text: 'Nombre de mouvements'
+            }
+        },
+        tooltip: {
+            y: {
+                formatter: function(val) {
+                    return val + " mouvements"
+                }
+            }
+        }
+    };
+    var chartActivite = new ApexCharts(document.querySelector("#chart-activite"), optionsActivite);
+    chartActivite.render();
+
+    // === GRAPHIQUE 3 : Entrées vs Sorties (radar) ===
+    var optionsEntreesSorties = {
+        series: [{
+            name: 'Entrées',
+            data: [{{ total_entrees }}]
+        }, {
+            name: 'Sorties',
+            data: [{{ total_sorties }}]
+        }],
+        chart: {
+            type: 'radar',
+            height: 300,
+        },
+        colors: ['#2ecc71', '#e74c3c'],
+        xaxis: {
+            categories: ['Volume']
+        },
+        yaxis: {
+            show: false
+        },
+        plotOptions: {
+            radar: {
+                size: 120,
+                polygons: {
+                    strokeColors: '#e8e8e8',
+                    fill: {
+                        colors: ['#f8f8f8', '#fff']
+                    }
+                }
+            }
+        },
+        tooltip: {
+            y: {
+                formatter: function(val) {
+                    return val + " unités"
+                }
+            }
+        }
+    };
+    var chartEntreesSorties = new ApexCharts(document.querySelector("#chart-entrees-sorties"), optionsEntreesSorties);
+    chartEntreesSorties.render();
+
+    // === GRAPHIQUE 4 : Top 5 produits (barres horizontales) ===
+    var optionsTopProduits = {
+        series: [{
+            data: {{ top_series|safe }}
+        }],
+        chart: {
+            type: 'bar',
+            height: 300,
+        },
+        plotOptions: {
+            bar: {
+                horizontal: true,
+                borderRadius: 4,
+                dataLabels: {
+                    position: 'center'
+                }
+            }
+        },
+        dataLabels: {
+            enabled: true,
+            formatter: function(val) {
+                return val + " unités"
+            },
+            style: {
+                fontSize: '12px',
+                colors: ['#fff']
+            }
+        },
+        xaxis: {
+            categories: {{ top_labels|safe }},
+        },
+        colors: ['#9b59b6'],
+        tooltip: {
+            y: {
+                formatter: function(val) {
+                    return val + " unités sorties"
+                }
+            }
+        }
+    };
+    var chartTopProduits = new ApexCharts(document.querySelector("#chart-top-produits"), optionsTopProduits);
+    chartTopProduits.render();
+});
+</script>
+
+<!-- STYLES -->
 <style>
-/* Styles supplémentaires pour améliorer l'apparence */
-table {
+/* Layout */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin: 30px 0;
+}
+
+.kpi-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    text-align: center;
+    transition: transform 0.3s;
+}
+
+.kpi-card:hover {
+    transform: translateY(-5px);
+}
+
+.kpi-card h3 {
+    color: #3498db;
+    font-size: 2.5rem;
+    margin: 10px 0;
+    font-weight: bold;
+}
+
+.kpi-card p {
+    color: #7f8c8d;
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.kpi-alert h3 {
+    color: #e74c3c;
+}
+
+/* Section */
+.section {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin: 30px 0;
+}
+
+.section h3 {
+    color: #2c3e50;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #f8f9fa;
+    padding-bottom: 10px;
+}
+
+/* Charts */
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.chart-container {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.chart-container h4 {
+    color: #495057;
+    font-size: 16px;
+    margin-bottom: 15px;
+}
+
+.chart-info {
+    margin-top: 10px;
+    text-align: center;
+    color: #6c757d;
+    font-size: 12px;
+}
+
+#chart-distribution, #chart-activite, #chart-entrees-sorties, #chart-top-produits {
+    width: 100%;
+}
+
+/* Tables */
+.table-responsive {
+    overflow-x: auto;
+}
+
+.table-data {
     width: 100%;
     border-collapse: collapse;
     margin-top: 10px;
 }
 
-th {
+.table-data thead {
     background: #f8f9fa;
-    font-weight: 600;
-    color: #495057;
 }
 
-td, th {
+.table-data th {
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table-data td {
     padding: 12px;
     text-align: left;
     border-bottom: 1px solid #dee2e6;
 }
 
-tr:hover {
+.table-data tr:hover {
     background: #f8f9fa;
+}
+
+/* Badges & Progress bars */
+.badge-type {
+    background: #e8f4fd;
+    color: #3498db;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 0.85rem;
 }
 
 .badge {
@@ -193,9 +538,84 @@ tr:hover {
     font-weight: 500;
 }
 
-.badge-primary { background: #e8f4fd; color: #3498db; }
-.badge-success { background: #d1e7dd; color: #0f5132; }
 .badge-danger { background: #f8d7da; color: #842029; }
+.badge-success { background: #d1e7dd; color: #0f5132; }
 .badge-warning { background: #fff3cd; color: #664d03; }
+
+.progress-bar-small {
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 5px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3498db, #2ecc71);
+    border-radius: 4px;
+}
+
+/* Summary section */
+.summary-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.summary-section h3 {
+    color: white;
+    border-bottom-color: rgba(255,255,255,0.2);
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.summary-card {
+    background: rgba(255,255,255,0.1);
+    padding: 20px;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+}
+
+.summary-card h4 {
+    color: white;
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+
+.summary-card p {
+    margin: 8px 0;
+    color: rgba(255,255,255,0.9);
+}
+
+.summary-card strong {
+    color: white;
+}
+
+/* Alerts */
+.alert {
+    padding: 20px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.alert-success {
+    background: #d1e7dd;
+    color: #0f5132;
+}
+
+.alert-info {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+/* Text utilities */
+.text-danger { color: #e74c3c; }
+.text-center { text-align: center; }
+.bold { font-weight: bold; }
+.text-muted { color: #6c757d; font-size: 0.9rem; }
 </style>
 {% endblock %}
